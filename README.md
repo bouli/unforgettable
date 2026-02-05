@@ -1,4 +1,4 @@
-# Unforgettable - v0.0.1
+# Unforgettable - v0.1.0
 
 Unforgettable is a simple cache class you can used for tiny repetitive executions.
 

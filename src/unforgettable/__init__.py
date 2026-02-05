@@ -1,10 +1,13 @@
 import os
 
+
 class unforgettable:
     cache_folder: str | None = None
     cache_files_extension: str = "cache"
 
-    def __init__(self, cache_folder: str | None = None, cache_files_extension: str | None = None):
+    def __init__(
+        self, cache_folder: str | None = None, cache_files_extension: str | None = None
+    ):
         if cache_folder is not None:
             self.cache_folder = cache_folder
         else:
