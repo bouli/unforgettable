@@ -1,0 +1,28 @@
+[project]
+name = "unforgettable"
+version = "0.1.0"
+license = "MIT"
+description = "Unforgettable is a simple cache you can used for tiny repetitive executions."
+authors = [
+    { name = "Cesar Cardoso", email = "hello@cesarcardoso.cc" }
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.bumpversion]
+tag = true
+tag_name = "v{new_version}"
+pre_commit_hooks = ["uvx isort ./src", "uvx black ./src", "git add src", "uv sync --upgrade", "git add uv.lock"]
+commit = true
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "README.md"
+
+[[tool.bumpversion.files]]
+filename = "Makefile"
