@@ -3,9 +3,7 @@
 Unforgettable is a simple cache class you can used for tiny repetitive executions.
 
 It uses a [temp dir](https://docs.python.org/3/library/tempfile.html) for each
-execution. But you can define a your own directory and use the cache as much as
-you want setting `SIMPLE_CACHE_ROOT_DIR` env var.
-
+execution.
 ### How to install and use
 
 Install with `uv` or `pip`
@@ -29,7 +27,7 @@ cache = unforgettable()
 cached_code = cache.get(cache_id=cache_id)
 ```
 
-
+Using your own folder for storing longer term cache:
 ```python
 SIMPLE_CACHE_ROOT_DIR = os.getenv("SIMPLE_CACHE_ROOT_DIR", None)
 cache = unforgettable(cache_folder=SIMPLE_CACHE_ROOT_DIR)
