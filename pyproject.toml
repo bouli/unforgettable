@@ -1,6 +1,6 @@
 [project]
 name = "unforgettable"
-version = "0.1.0"
+version = "0.1.1"
 license = "MIT"
 description = "Unforgettable is a simple cache you can used for tiny repetitive executions."
 authors = [
