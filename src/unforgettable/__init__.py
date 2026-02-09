@@ -50,6 +50,8 @@ class unforgettable:
         new_file_name = f"{new_file_index}.{self.cache_files_extension}"
         new_file_path = os.path.join(cache_folder, new_file_name)
         with open(new_file_path, "wb") as new_file_writer:
+            if type(content) == str:
+                content = content.encode()
             new_file_writer.write(content)
 
     @safe_cache_id
