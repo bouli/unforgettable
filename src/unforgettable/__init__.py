@@ -60,6 +60,26 @@ class unforgettable:
         code = self.get_cached_file_by_index(cached_file_index=cached_file_index)
         return code
 
+    def list(self) -> list[str]:
+        cache_ids = []
+        cache_index_file_name = os.path.basename(self.get_cache_index_path())
+
+        for line in self.get_cache_index_file().splitlines():
+            if ": " not in line:
+                continue
+
+            _, cache_id = line.split(": ", 1)
+            cache_id = cache_id.strip()
+            if cache_id == cache_index_file_name:
+                continue
+
+            if cache_id.startswith('"') and cache_id.endswith('"'):
+                cache_id = cache_id[1:-1]
+
+            cache_ids.append(cache_id)
+
+        return cache_ids
+
     def get_index_from_file_index(self, _safe_cache_id):
         cache_index_file = self.get_cache_index_file()
         if cache_index_file.find(_safe_cache_id) < 1:

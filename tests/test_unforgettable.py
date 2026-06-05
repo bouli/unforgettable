@@ -9,12 +9,19 @@ def test_get_returns_none_for_missing_cache_id(tmp_path):
     assert cache.get(cache_id="missing") is None
 
 
+def test_list_returns_empty_list_for_new_cache_folder(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+
+    assert cache.list() == []
+
+
 def test_set_and_get_text_content(tmp_path):
     cache = unforgettable(cache_folder=str(tmp_path))
 
     cache.set(content="cached value", cache_id="example")
 
     assert cache.get(cache_id="example") == "cached value"
+    assert cache.list() == ["example"]
 
 
 def test_set_and_get_binary_content(tmp_path):
@@ -33,6 +40,7 @@ def test_overwrites_existing_cache_entry(tmp_path):
     cache.set(content="second value", cache_id="repeat")
 
     assert cache.get(cache_id="repeat") == "second value"
+    assert cache.list() == ["repeat"]
 
 
 def test_multiple_cache_ids_are_retrieved_independently(tmp_path):
@@ -43,6 +51,17 @@ def test_multiple_cache_ids_are_retrieved_independently(tmp_path):
 
     assert cache.get(cache_id="first") == "one"
     assert cache.get(cache_id="second") == "two"
+    assert cache.list() == ["first", "second"]
+
+
+def test_list_preserves_cache_ids_with_spaces_and_punctuation(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache_id = "id with spaces: and punctuation?!"
+
+    cache.set(content="stored", cache_id=cache_id)
+
+    assert cache.list() == [cache_id]
+    assert cache.get(cache_id=cache_id) == "stored"
 
 
 def test_configured_cache_folder_persists_between_instances(tmp_path):
@@ -53,6 +72,7 @@ def test_configured_cache_folder_persists_between_instances(tmp_path):
     new_cache = unforgettable(cache_folder=cache_folder)
 
     assert new_cache.get(cache_id="shared") == "persisted"
+    assert new_cache.list() == ["shared"]
 
 
 def test_default_cache_folder_is_reused_by_same_instance():
@@ -72,6 +92,7 @@ def test_custom_cache_file_extension_is_used(tmp_path):
     cache.set(content="custom extension", cache_id="file-extension")
 
     assert cache.get(cache_id="file-extension") == "custom extension"
+    assert cache.list() == ["file-extension"]
     assert list(tmp_path.glob("*.txt"))
 
 

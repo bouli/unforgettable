@@ -42,6 +42,17 @@ print(cached_value)
 `get()` returns the cached value when it exists. If there is no value for that
 `cache_id`, it returns `None`.
 
+Use `list()` to inspect the cache IDs currently available in a cache folder.
+
+```python
+from unforgettable import unforgettable
+
+cache = unforgettable()
+cache.set(content="computed result", cache_id="expensive-operation")
+
+assert cache.list() == ["expensive-operation"]
+```
+
 ## Cache Text
 
 ```python
@@ -184,6 +195,15 @@ Returns the cached value for `cache_id`.
 - Returns `str` for text files.
 - Returns `bytes` for binary files.
 - Returns `None` when the cache entry does not exist.
+
+### `cache.list()`
+
+Returns a `list[str]` containing user-created cache IDs available in the cache
+folder.
+
+- Returns an empty list when no user cache entries exist.
+- Omits internal cache index bookkeeping.
+- Preserves cache IDs with spaces and punctuation.
 
 ### `cache.clean()`
 
