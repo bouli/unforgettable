@@ -108,6 +108,19 @@ second_cache = unforgettable(cache_folder=".unforgettable-cache")
 assert second_cache.get(cache_id="example") == "persisted"
 ```
 
+## Command Line
+
+Installing the package exposes an `unforgettable` command.
+
+List cache IDs from a persistent cache folder:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache list
+```
+
+The `list` command prints one cache ID per line and prints nothing when the
+selected cache folder has no user-created entries.
+
 ## Custom Cache File Extension
 
 Cache content files use the `cache` extension by default. You can choose a
