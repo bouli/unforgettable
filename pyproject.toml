@@ -38,3 +38,6 @@ filename = "README.md"
 
 [[tool.bumpversion.files]]
 filename = "Makefile"
+
+[[tool.bumpversion.files]]
+filename = "src/unforgettable/cli.py"

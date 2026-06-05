@@ -29,6 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Inspect and maintain an Unforgettable cache.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+    parser.add_argument("--version", action="version", version="%(prog)s v0.2.0")
     parser.add_argument(
         "--cache-folder",
         default=None,
