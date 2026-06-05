@@ -1,77 +1,225 @@
 # Unforgettable - v0.1.1
 
-Unforgettable is a simple cache class you can used for tiny repetitive executions.
+Unforgettable is a tiny file-backed cache for Python code that repeats small
+pieces of work. It is useful for local scripts, notebooks, tests, prototypes,
+and automation where a value is expensive or annoying to compute more than
+once.
 
-It uses a [temp dir](https://docs.python.org/3/library/tempfile.html) for each
-execution.
-### How to install and use
+The library has no runtime dependencies and exposes one main class:
+`unforgettable`.
 
-Install with `uv` or `pip`
+## Installation
+
+Install with `uv`:
+
 ```shell
 uv add unforgettable
-# or
-pip unforgettable
 ```
 
-Setting values:
-```python
-cache = unforgettable()
+Or with `pip`:
 
-cache.set(content=code, cache_id=cache_id=cache_id)
+```shell
+pip install unforgettable
 ```
 
-Setting values:
-```python
-cache = unforgettable()
+Unforgettable requires Python 3.11 or newer.
 
-cached_code = cache.get(cache_id=cache_id)
-```
-
-Using your own folder for storing longer term cache:
-```python
-SIMPLE_CACHE_ROOT_DIR = os.getenv("SIMPLE_CACHE_ROOT_DIR", None)
-cache = unforgettable(cache_folder=SIMPLE_CACHE_ROOT_DIR)
-```
-
-And you can clean the cache with:
-```python
-unforgettable.clean()
-```
-
-### Example of Usage
+## Quick Start
 
 ```python
-import requests
 from unforgettable import unforgettable
 
 cache = unforgettable()
 
-def my_request():
-    url = "https://github.com/bouli/unforgettable"
+cached_value = cache.get(cache_id="expensive-operation")
+if cached_value is None:
+    cached_value = "computed result"
+    cache.set(content=cached_value, cache_id="expensive-operation")
 
-    url_request_1 = requests_get(url) #no cache yet
-    url_request_2 = requests_get(url) #with cache
+print(cached_value)
+```
 
-def requests_get(url):
-    cached_code = cache.get(cache_id=url)
+`get()` returns the cached value when it exists. If there is no value for that
+`cache_id`, it returns `None`.
 
-    if cached_code is not None:
-        print("You are using cached")
-        return cached_code
+## Cache Text
 
-    req = requests.get(url=url, timeout=5)
-    if req.status_code != 200:
+```python
+from unforgettable import unforgettable
+
+cache = unforgettable()
+
+cache.set(content="hello", cache_id="greeting")
+
+assert cache.get(cache_id="greeting") == "hello"
+```
+
+## Cache Bytes
+
+```python
+from unforgettable import unforgettable
+
+cache = unforgettable()
+
+content = b"\x80\x81cached bytes"
+cache.set(content=content, cache_id="binary-value")
+
+assert cache.get(cache_id="binary-value") == content
+```
+
+## Persistent Cache Folder
+
+By default, each cache instance creates its own temporary directory with
+`tempfile`. Use `cache_folder` when you want cached values to persist across
+Python process runs.
+
+```python
+import os
+
+from unforgettable import unforgettable
+
+cache_dir = os.environ.get("UNFORGETTABLE_CACHE_DIR", ".unforgettable-cache")
+cache = unforgettable(cache_folder=cache_dir)
+
+cache.set(content="saved between runs", cache_id="stable-key")
+```
+
+Creating a new cache instance with the same folder can read values written by
+the previous instance.
+
+```python
+from unforgettable import unforgettable
+
+first_cache = unforgettable(cache_folder=".unforgettable-cache")
+first_cache.set(content="persisted", cache_id="example")
+
+second_cache = unforgettable(cache_folder=".unforgettable-cache")
+assert second_cache.get(cache_id="example") == "persisted"
+```
+
+## Custom Cache File Extension
+
+Cache content files use the `cache` extension by default. You can choose a
+different extension when creating the cache instance.
+
+```python
+from unforgettable import unforgettable
+
+cache = unforgettable(
+    cache_folder=".unforgettable-cache",
+    cache_files_extension="txt",
+)
+
+cache.set(content="inspectable text", cache_id="example")
+```
+
+## Cleaning A Cache
+
+Call `clean()` on a cache instance to remove the files in that instance's cache
+folder.
+
+```python
+from unforgettable import unforgettable
+
+cache = unforgettable(cache_folder=".unforgettable-cache")
+cache.set(content="temporary", cache_id="example")
+
+cache.clean()
+```
+
+## HTTP Request Example
+
+This example caches successful HTTP responses by URL. Failed requests are not
+cached.
+
+```python
+import requests
+
+from unforgettable import unforgettable
+
+cache = unforgettable(cache_folder=".request-cache")
+
+
+def requests_get(url: str) -> bytes | None:
+    cached_response = cache.get(cache_id=url)
+    if cached_response is not None:
+        return cached_response
+
+    response = requests.get(url=url, timeout=5)
+    if response.status_code != 200:
         return None
 
-    code = req.content
-    cache.set(content=code, cache_id=url)
-    return code
+    cache.set(content=response.content, cache_id=url)
+    return response.content
+
+
+url = "https://github.com/bouli/unforgettable"
+first_response = requests_get(url)
+second_response = requests_get(url)
+```
+
+## API Reference
+
+### `unforgettable(cache_folder=None, cache_files_extension=None)`
+
+Creates a cache instance.
+
+- `cache_folder`: optional folder for cache files. When omitted, the instance
+  uses a temporary directory.
+- `cache_files_extension`: optional extension for stored cache content files.
+  Defaults to `cache`.
+
+### `cache.set(content, cache_id)`
+
+Stores `content` under `cache_id`.
+
+- `content` can be `str` or `bytes`.
+- Calling `set()` again with the same `cache_id` overwrites the existing cached
+  content.
+
+### `cache.get(cache_id)`
+
+Returns the cached value for `cache_id`.
+
+- Returns `str` for text files.
+- Returns `bytes` for binary files.
+- Returns `None` when the cache entry does not exist.
+
+### `cache.clean()`
+
+Removes files from the cache instance's folder.
+
+## Development
+
+Install dependencies:
+
+```shell
+uv sync --dev
+```
+
+Run tests:
+
+```shell
+make tests
+```
+
+Run the coverage report:
+
+```shell
+make report
+```
+
+Build the package:
+
+```shell
+make build
 ```
 
 ## See Also
 
-- Github: https://github.com/bouli/unforgettable
+- GitHub: https://github.com/bouli/unforgettable
 - PyPI: https://pypi.org/project/unforgettable/
 
 ## License
+
 This package is distributed under the [MIT license](https://opensource.org/license/MIT).
