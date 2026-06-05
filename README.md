@@ -126,6 +126,10 @@ Pass `--cache-folder` to use a different persistent cache folder:
 unforgettable --cache-folder .unforgettable-cache list
 ```
 
+When an explicitly selected cache folder does not exist, the CLI asks before
+creating it. Answer `y` or `yes` to create the folder and continue; any other
+answer exits without creating the folder or changing cache contents.
+
 The `list` command prints one cache ID per line and prints nothing when the
 selected cache folder has no user-created entries.
 

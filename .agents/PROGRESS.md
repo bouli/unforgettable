@@ -23,3 +23,9 @@
   - Preserved explicit `--cache-folder` override behavior.
   - Documented the default cache folder workflow in `README.md`.
   - Covered default-folder use, explicit-folder override, and help text with subprocess tests.
+- `.agents/issues/005-prompt-before-creating-missing-cli-cache-folder.md`
+  - Added a confirmation prompt before creating a missing explicitly selected CLI cache folder.
+  - Preserved automatic creation for the default `.unforgettable-memory` folder.
+  - Exits non-zero without creating the folder when the prompt is declined or receives no input.
+  - Documented the missing explicit folder prompt in `README.md`.
+  - Covered confirmed, declined, and no-input prompt behavior with subprocess tests.

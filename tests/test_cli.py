@@ -5,7 +5,7 @@ import sys
 from unforgettable import unforgettable
 
 
-def run_cli(*args, cwd=None):
+def run_cli(*args, cwd=None, input=None):
     env = os.environ.copy()
     src_path = os.path.abspath("src")
     env["PYTHONPATH"] = (
@@ -19,6 +19,7 @@ def run_cli(*args, cwd=None):
         env=env,
         text=True,
         capture_output=True,
+        input=input,
     )
 
 
@@ -102,6 +103,61 @@ def test_cli_explicit_cache_folder_overrides_default(tmp_path):
         cache_id="script-key"
     ) == "stored explicitly"
     assert not (tmp_path / ".unforgettable-memory").exists()
+
+
+def test_cli_prompts_before_creating_missing_explicit_cache_folder(tmp_path):
+    explicit_cache_folder = tmp_path / "new-cache"
+
+    result = run_cli(
+        "--cache-folder",
+        str(explicit_cache_folder),
+        "set",
+        "script-key",
+        "stored explicitly",
+        input="yes\n",
+    )
+
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert "Create it? [y/N]" in result.stderr
+    assert unforgettable(cache_folder=str(explicit_cache_folder)).get(
+        cache_id="script-key"
+    ) == "stored explicitly"
+
+
+def test_cli_declining_missing_explicit_cache_folder_does_not_create_it(tmp_path):
+    explicit_cache_folder = tmp_path / "new-cache"
+
+    result = run_cli(
+        "--cache-folder",
+        str(explicit_cache_folder),
+        "set",
+        "script-key",
+        "stored explicitly",
+        input="no\n",
+    )
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert "cache folder was not created" in result.stderr
+    assert not explicit_cache_folder.exists()
+
+
+def test_cli_missing_explicit_cache_folder_without_input_exits_nonzero(tmp_path):
+    explicit_cache_folder = tmp_path / "new-cache"
+
+    result = run_cli(
+        "--cache-folder",
+        str(explicit_cache_folder),
+        "list",
+        input="",
+    )
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert "cache folder creation cancelled" in result.stderr
+    assert "cache folder was not created" in result.stderr
+    assert not explicit_cache_folder.exists()
 
 
 def test_cli_get_prints_cached_text_from_selected_cache_folder(tmp_path):

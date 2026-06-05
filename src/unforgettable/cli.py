@@ -1,10 +1,26 @@
 import argparse
 import os
+import sys
 from collections.abc import Sequence
 
 from unforgettable import unforgettable
 
 DEFAULT_CACHE_FOLDER = ".unforgettable-memory"
+
+
+def confirm_create_cache_folder(cache_folder: str) -> bool:
+    sys.stderr.write(
+        f"unforgettable: cache folder does not exist: {cache_folder}\n"
+        "Create it? [y/N] "
+    )
+    sys.stderr.flush()
+
+    response = sys.stdin.readline()
+    if response == "":
+        sys.stderr.write("unforgettable: cache folder creation cancelled\n")
+        return False
+
+    return response.strip().lower() in {"y", "yes"}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -15,8 +31,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--cache-folder",
-        default=DEFAULT_CACHE_FOLDER,
-        help="Folder containing the cache files to operate on.",
+        default=None,
+        help=(
+            "Folder containing the cache files to operate on. "
+            f"Defaults to {DEFAULT_CACHE_FOLDER}."
+        ),
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -37,10 +56,17 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    if args.cache_folder == DEFAULT_CACHE_FOLDER:
-        os.makedirs(args.cache_folder, exist_ok=True)
+    cache_folder_was_explicit = args.cache_folder is not None
+    cache_folder = args.cache_folder or DEFAULT_CACHE_FOLDER
 
-    cache = unforgettable(cache_folder=args.cache_folder)
+    if cache_folder_was_explicit and not os.path.exists(cache_folder):
+        if not confirm_create_cache_folder(cache_folder):
+            parser.exit(1, "unforgettable: cache folder was not created\n")
+        os.makedirs(cache_folder)
+    elif not cache_folder_was_explicit:
+        os.makedirs(cache_folder, exist_ok=True)
+
+    cache = unforgettable(cache_folder=cache_folder)
 
     if args.command == "list":
         for cache_id in cache.list():
