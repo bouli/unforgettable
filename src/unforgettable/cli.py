@@ -1,16 +1,21 @@
 import argparse
+import os
 from collections.abc import Sequence
 
 from unforgettable import unforgettable
+
+DEFAULT_CACHE_FOLDER = ".unforgettable-memory"
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="unforgettable",
         description="Inspect and maintain an Unforgettable cache.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
         "--cache-folder",
+        default=DEFAULT_CACHE_FOLDER,
         help="Folder containing the cache files to operate on.",
     )
 
@@ -32,6 +37,9 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.cache_folder == DEFAULT_CACHE_FOLDER:
+        os.makedirs(args.cache_folder, exist_ok=True)
+
     cache = unforgettable(cache_folder=args.cache_folder)
 
     if args.command == "list":

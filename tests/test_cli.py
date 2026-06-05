@@ -28,6 +28,7 @@ def test_cli_help_describes_list_command():
     assert result.returncode == 0
     assert "list" in result.stdout
     assert "--cache-folder" in result.stdout
+    assert ".unforgettable-memory" in result.stdout
 
 
 def test_cli_list_prints_cache_ids_from_selected_cache_folder(tmp_path):
@@ -68,6 +69,39 @@ def test_cli_set_stores_text_content_in_selected_cache_folder(tmp_path):
     assert unforgettable(cache_folder=str(tmp_path)).get(cache_id="script-key") == (
         "stored from shell"
     )
+
+
+def test_cli_set_uses_default_cache_folder_when_omitted(tmp_path):
+    result = run_cli("set", "script-key", "stored from default folder", cwd=tmp_path)
+
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert unforgettable(cache_folder=str(tmp_path / ".unforgettable-memory")).get(
+        cache_id="script-key"
+    ) == "stored from default folder"
+
+
+def test_cli_explicit_cache_folder_overrides_default(tmp_path):
+    explicit_cache_folder = tmp_path / "explicit-cache"
+    explicit_cache_folder.mkdir()
+
+    result = run_cli(
+        "--cache-folder",
+        str(explicit_cache_folder),
+        "set",
+        "script-key",
+        "stored explicitly",
+        cwd=tmp_path,
+    )
+
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert unforgettable(cache_folder=str(explicit_cache_folder)).get(
+        cache_id="script-key"
+    ) == "stored explicitly"
+    assert not (tmp_path / ".unforgettable-memory").exists()
 
 
 def test_cli_get_prints_cached_text_from_selected_cache_folder(tmp_path):

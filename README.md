@@ -112,7 +112,15 @@ assert second_cache.get(cache_id="example") == "persisted"
 
 Installing the package exposes an `unforgettable` command.
 
-List cache IDs from a persistent cache folder:
+CLI commands use `.unforgettable-memory` in the current working directory by
+default, so you can run commands without passing `--cache-folder`:
+
+```shell
+unforgettable set greeting "hello"
+unforgettable get greeting
+```
+
+Pass `--cache-folder` to use a different persistent cache folder:
 
 ```shell
 unforgettable --cache-folder .unforgettable-cache list

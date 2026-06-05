@@ -17,3 +17,9 @@
   - Defined missing cache IDs for CLI `get` as exit code `1` with a stderr message.
   - Documented CLI cache mutation and retrieval usage in `README.md`.
   - Covered successful CLI set, get, clean, missing get, and invalid set usage with subprocess tests.
+- `.agents/issues/004-add-default-cli-cache-folder.md`
+  - Added `.unforgettable-memory` as the CLI `--cache-folder` default.
+  - Created the default folder automatically when omitted so CLI commands can run from a clean working directory.
+  - Preserved explicit `--cache-folder` override behavior.
+  - Documented the default cache folder workflow in `README.md`.
+  - Covered default-folder use, explicit-folder override, and help text with subprocess tests.
