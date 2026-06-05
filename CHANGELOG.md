@@ -1,6 +1,6 @@
 # CHANGELOG
 
-* d61901c chore(bumper): Add `CHANGELOG.md` to the `bumper`
+* 4784661 chore(bumper): Add `CHANGELOG.md` to the `bumper`
 * e99a7bb Prompt before creating explicit CLI cache folder
 * 7d7fc4d Add default CLI cache folder
 * 748adc4 Add CLI cache mutation commands

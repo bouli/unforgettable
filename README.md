@@ -1,4 +1,4 @@
-# Unforgettable - v0.1.1
+# Unforgettable - v0.2.0
 
 Unforgettable is a tiny file-backed cache for Python code that repeats small
 pieces of work. It is useful for local scripts, notebooks, tests, prototypes,
