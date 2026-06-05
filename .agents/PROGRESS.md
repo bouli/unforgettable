@@ -12,3 +12,8 @@
   - Printed listed cache IDs one per line and no output for empty cache folders.
   - Documented the CLI list workflow in `README.md`.
   - Covered CLI help, selected-folder listing, and empty-folder behavior with subprocess tests.
+- `.agents/issues/003-add-cli-cache-mutation-commands.md`
+  - Added CLI `set`, `get`, and `clean` commands backed by the existing cache class.
+  - Defined missing cache IDs for CLI `get` as exit code `1` with a stderr message.
+  - Documented CLI cache mutation and retrieval usage in `README.md`.
+  - Covered successful CLI set, get, clean, missing get, and invalid set usage with subprocess tests.

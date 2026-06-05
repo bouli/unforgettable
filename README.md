@@ -121,6 +121,26 @@ unforgettable --cache-folder .unforgettable-cache list
 The `list` command prints one cache ID per line and prints nothing when the
 selected cache folder has no user-created entries.
 
+Store text under a cache ID:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache set greeting "hello"
+```
+
+Retrieve cached text:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache get greeting
+```
+
+Clean the selected cache folder:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache clean
+```
+
+`get` exits with status code `1` when the requested cache ID is missing.
+
 ## Custom Cache File Extension
 
 Cache content files use the `cache` extension by default. You can choose a
