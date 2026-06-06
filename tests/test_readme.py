@@ -51,5 +51,17 @@ def test_readme_documents_release_verification_checklist():
     assert "unforgettable --help` after installing the built wheel" in readme
     assert "python -m unforgettable --help` after installing the built wheel" in readme
     assert "unforgettable --version` after installing the built wheel" in readme
+    assert "--create-cache-folder set notes" in readme
+    assert "--output json get notes" in readme
+    assert "--output json exists notes" in readme
+    assert "--output json info notes" in readme
+    assert ".release-cache export" in readme
+    assert ".release-cache import --stdin < memory.json" in readme
+    assert ".release-cache delete notes" in readme
     assert "tests/test_packaging.py" in readme
     assert "verifies installed console script, module execution, and version output" in readme
+    assert (
+        "agent memory smoke checks above exercise `set`, structured JSON\n"
+        "`get`, `exists`, `info`, `export`, `import --stdin`, and `delete`"
+        in readme
+    )

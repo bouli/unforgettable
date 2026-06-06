@@ -70,3 +70,11 @@
 - Documented import behavior, failure modes, CLI usage, and API usage in the README.
 - Added regression coverage for API import, CLI import, overwrite/upsert behavior, preservation of unrelated entries, empty stdin, malformed JSON, invalid data, text/multiline IDs with punctuation, binary content, installed help, and README contract.
 - Verification: `uv run pytest` passed with 89 tests.
+
+## 2026-06-06 - 008 Documentation and Release Contract
+
+- Reconciled completed export/import issue checklists with the implemented progress already recorded for 006 and 007.
+- Expanded README release verification notes with smoke-check commands for `set`, structured JSON `get`, JSON `exists`, JSON `info`, `export`, `import --stdin`, and `delete`.
+- Strengthened README documentation tests to assert the release verification checklist includes the new agent memory command contract.
+- Marked the documentation and release-contract issue complete.
+- Verification: `uv run pytest` passed with 89 tests.

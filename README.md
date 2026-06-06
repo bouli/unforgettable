@@ -600,6 +600,13 @@ the agent-facing execution paths:
 - `uv build --wheel`
 - `uv tool run unforgettable --help`
 - `uv tool run unforgettable --version`
+- `unforgettable --cache-folder .release-cache --create-cache-folder set notes "release check"`
+- `unforgettable --cache-folder .release-cache --output json get notes`
+- `unforgettable --cache-folder .release-cache --output json exists notes`
+- `unforgettable --cache-folder .release-cache --output json info notes`
+- `unforgettable --cache-folder .release-cache export`
+- `unforgettable --cache-folder .release-cache import --stdin < memory.json`
+- `unforgettable --cache-folder .release-cache delete notes`
 - `uvx unforgettable --help` where the `uvx` alias is installed
 - `uvx unforgettable --version` where the `uvx` alias is installed
 - `unforgettable --help` after installing the built wheel
@@ -610,7 +617,9 @@ If `uvx` is not installed, record that it was unavailable and use
 `uv tool run unforgettable --help` and `uv tool run unforgettable --version` as
 the equivalent ephemeral execution checks. The packaging test builds the wheel
 and verifies installed console script, module execution, and version output
-contracts; keep it passing before release.
+contracts. The agent memory smoke checks above exercise `set`, structured JSON
+`get`, `exists`, `info`, `export`, `import --stdin`, and `delete`; keep those
+commands passing before release.
 
 ## See Also
 
