@@ -116,6 +116,67 @@ def test_cli_set_stores_text_content_in_selected_cache_folder(tmp_path):
     )
 
 
+def test_cli_set_reads_multiline_text_content_from_stdin(tmp_path):
+    content = "first line\nsecond line\nthird line"
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "set",
+        "script-key",
+        "--stdin",
+        input=content,
+    )
+
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert unforgettable(cache_folder=str(tmp_path)).get(cache_id="script-key") == (
+        content
+    )
+
+
+def test_cli_get_prints_multiline_stdin_content_without_extra_decoration(tmp_path):
+    content = "first line\nsecond line\n"
+    set_result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "set",
+        "multiline",
+        "--stdin",
+        input=content,
+    )
+
+    result = run_cli("--cache-folder", str(tmp_path), "get", "multiline")
+
+    assert set_result.returncode == 0
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert result.stdout == content
+
+
+def test_cli_stdin_set_round_trips_cache_ids_with_spaces_and_punctuation(tmp_path):
+    cache_id = "id with spaces: and punctuation?!"
+    content = "stored through stdin"
+
+    set_result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "set",
+        cache_id,
+        "--stdin",
+        input=content,
+    )
+    get_result = run_cli("--cache-folder", str(tmp_path), "get", cache_id)
+    list_result = run_cli("--cache-folder", str(tmp_path), "list")
+
+    assert set_result.returncode == 0
+    assert get_result.returncode == 0
+    assert get_result.stdout == content
+    assert list_result.returncode == 0
+    assert list_result.stdout.splitlines() == [cache_id]
+
+
 def test_cli_set_uses_default_cache_folder_when_omitted(tmp_path):
     result = run_cli("set", "script-key", "stored from default folder", cwd=tmp_path)
 
@@ -256,7 +317,7 @@ def test_cli_get_prints_cached_text_from_selected_cache_folder(tmp_path):
 
     assert result.returncode == 0
     assert result.stderr == ""
-    assert result.stdout == "stored value\n"
+    assert result.stdout == "stored value"
 
 
 def test_cli_clean_removes_entries_from_selected_cache_folder(tmp_path):
@@ -283,4 +344,38 @@ def test_cli_set_requires_content_argument(tmp_path):
     result = run_cli("--cache-folder", str(tmp_path), "set", "missing-content")
 
     assert result.returncode == 2
-    assert "usage:" in result.stderr
+    assert result.stdout == ""
+    assert result.stderr == "unforgettable: set requires CONTENT or --stdin\n"
+
+
+def test_cli_set_rejects_content_argument_with_stdin_flag(tmp_path):
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "set",
+        "script-key",
+        "argument content",
+        "--stdin",
+        input="stdin content",
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == (
+        "unforgettable: set accepts either CONTENT or --stdin, not both\n"
+    )
+
+
+def test_cli_set_stdin_requires_input_content(tmp_path):
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "set",
+        "script-key",
+        "--stdin",
+        input="",
+    )
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr == "unforgettable: no stdin content received\n"

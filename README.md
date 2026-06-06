@@ -151,11 +151,20 @@ Store text under a cache ID:
 unforgettable --cache-folder .unforgettable-cache set greeting "hello"
 ```
 
+Store text from stdin, including multiline or piped content:
+
+```shell
+printf 'first line\nsecond line\n' | unforgettable --cache-folder .unforgettable-cache set notes --stdin
+```
+
 Retrieve cached text:
 
 ```shell
 unforgettable --cache-folder .unforgettable-cache get greeting
 ```
+
+Retrieved text is written directly to stdout without labels or added trailing
+newlines, so cached values can be piped into other tools.
 
 Clean the selected cache folder:
 

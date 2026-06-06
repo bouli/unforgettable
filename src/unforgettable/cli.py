@@ -60,7 +60,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     set_parser = subparsers.add_parser("set", help="Store text content.")
     set_parser.add_argument("cache_id", help="Cache ID to store content under.")
-    set_parser.add_argument("content", help="Text content to store.")
+    set_parser.add_argument(
+        "content",
+        nargs="?",
+        help="Text content to store. Omit when using --stdin.",
+    )
+    set_parser.add_argument(
+        "--stdin",
+        action="store_true",
+        help="Read text content to store from stdin.",
+    )
 
     get_parser = subparsers.add_parser("get", help="Retrieve cached content.")
     get_parser.add_argument("cache_id", help="Cache ID to retrieve.")
@@ -96,14 +105,31 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "set":
-        cache.set(content=args.content, cache_id=args.cache_id)
+        if args.stdin and args.content is not None:
+            parser.exit(
+                2,
+                "unforgettable: set accepts either CONTENT or --stdin, not both\n",
+            )
+        if args.stdin:
+            content = sys.stdin.read()
+            if content == "":
+                parser.exit(1, "unforgettable: no stdin content received\n")
+        elif args.content is None:
+            parser.exit(2, "unforgettable: set requires CONTENT or --stdin\n")
+        else:
+            content = args.content
+
+        cache.set(content=content, cache_id=args.cache_id)
         return 0
 
     if args.command == "get":
         content = cache.get(cache_id=args.cache_id)
         if content is None:
             parser.exit(1, f"unforgettable: cache ID not found: {args.cache_id}\n")
-        print(content)
+        if isinstance(content, bytes):
+            sys.stdout.buffer.write(content)
+        else:
+            sys.stdout.write(content)
         return 0
 
     if args.command == "clean":

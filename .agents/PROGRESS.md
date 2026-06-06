@@ -39,3 +39,9 @@
   - Preserved the existing interactive prompt workflow and default `.unforgettable-memory` auto-creation.
   - Documented stdout/stderr behavior and noninteractive folder policy in `README.md`.
   - Covered noninteractive create, noninteractive reject, prompt, default-folder, and help behavior with subprocess tests.
+- `.agents/issues/008-add-stdin-support-for-set.md`
+  - Added `set CACHE_ID --stdin` to read cached text content from standard input.
+  - Preserved argument-based `set CACHE_ID CONTENT` usage while rejecting ambiguous CONTENT plus `--stdin` invocations.
+  - Changed CLI `get` to write stored content directly to stdout without adding labels or extra trailing newlines.
+  - Documented stdin storage and direct stdout retrieval behavior in `README.md`.
+  - Covered multiline stdin storage, exact retrieval, punctuation-containing cache IDs, and invalid stdin usage with subprocess tests.
