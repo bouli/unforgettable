@@ -68,4 +68,4 @@ def test_built_wheel_supports_installed_execution_paths(tmp_path):
 
     version_result = run_process([str(unforgettable), "--version"])
     assert_success(version_result)
-    assert version_result.stdout == "unforgettable v0.3.0\n"
+    assert version_result.stdout == "unforgettable v0.4.0\n"

@@ -1,17 +1,12 @@
 # CHANGELOG
 
-* fc6a605 chore(bumper): Add `tests/test_packaging.py` to the bumper
-* 3c320a1 chore: Housekeeping
-* e259963 Reconcile agent tool contract progress
-* 43280aa Record machine-readable output task reconciliation
-* 9f8fb15 Reconcile local checkout execution progress
-* 7f884fb Add release verification checklist
-* 25494f3 Document agent tool contract
-* 6d66cf8 Add built wheel execution tests
-* d617c5f Add JSON output mode for cache listing
-* ac9058e Add stdin support for CLI set
-* d4bb223 Add noninteractive cache folder policy
-* c06da59 Fix local checkout execution
-* 6e9ab16 fix: Fix bumper
-* 33980e3 feat(cli): Add `--version` argument to the `CLI`
-* 4ab5edc chore: Add ci/cd github/workflows to the project
+* cb2ffc5 Merge pull request #3 from bouli/dev
+* 6008c05 chore: Housekeeping
+* 30251a2 Document agent memory release contract
+* f303fca feat: add JSON import command
+* 158b543 Add JSON export command
+* 7c9e0c8 Add structured JSON get output
+* c27bf8f Add entry metadata info command
+* 1dd8d57 Add single-entry delete command
+* 76d3209 Add cache existence checks
+* 6146f65 feat: add manifest-backed cache metadata

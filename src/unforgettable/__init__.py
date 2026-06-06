@@ -7,7 +7,6 @@ from base64 import b64decode, b64encode
 from binascii import Error as BinasciiError
 from datetime import UTC, datetime
 
-
 CACHE_INDEX_FILE_NAME = "cache_index.yaml"
 CACHE_MANIFEST_FILE_NAME = "cache_manifest.json"
 
@@ -58,7 +57,9 @@ class unforgettable:
 
         new_file_name = f"{new_file_index}.{self.cache_files_extension}"
         new_file_path = os.path.join(cache_folder, new_file_name)
-        content_type = "text/plain" if type(content) == str else "application/octet-stream"
+        content_type = (
+            "text/plain" if type(content) == str else "application/octet-stream"
+        )
         if type(content) == str:
             content = content.encode()
         self._atomic_write_bytes(new_file_path, content)
@@ -204,7 +205,9 @@ class unforgettable:
         cache_index_file_path = os.path.join(cache_folder, CACHE_INDEX_FILE_NAME)
 
         if not os.path.exists(cache_index_file_path):
-            self._atomic_write_text(cache_index_file_path, f"0: {CACHE_INDEX_FILE_NAME}")
+            self._atomic_write_text(
+                cache_index_file_path, f"0: {CACHE_INDEX_FILE_NAME}"
+            )
 
         return cache_index_file_path
 
@@ -369,11 +372,11 @@ class unforgettable:
                 try:
                     decoded_content = b64decode(content, validate=True)
                 except BinasciiError as exc:
-                    raise ValueError(f"entry {index} content is invalid base64") from exc
+                    raise ValueError(
+                        f"entry {index} content is invalid base64"
+                    ) from exc
             else:
-                raise ValueError(
-                    f"entry {index} encoding must be utf-8 or base64"
-                )
+                raise ValueError(f"entry {index} encoding must be utf-8 or base64")
 
             validated_entries.append(
                 {
