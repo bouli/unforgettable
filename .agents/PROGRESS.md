@@ -61,3 +61,8 @@
   - Documented `uvx`, `uv tool run`, installed CLI, and `python -m unforgettable` execution paths.
   - Documented exit codes, stdout/stderr separation, cache-folder policies, stdin-based `set`, JSON `list`, and version checks.
   - Added a README contract test covering the documented agent-facing behavior.
+- `.agents/issues/012-add-release-verification-checklist.md`
+  - Added a maintainer-facing release verification checklist to `README.md`.
+  - Documented `uv tool run` and conditional `uvx` ephemeral execution checks, including what to record when `uvx` is unavailable.
+  - Included installed CLI, module execution, version output, and built-wheel packaging test checks before release.
+  - Added README coverage for the release checklist content.

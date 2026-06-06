@@ -388,6 +388,28 @@ Build the package:
 make build
 ```
 
+### Release Verification
+
+Before publishing a release, run the local tests, build the wheel, and verify
+the agent-facing execution paths:
+
+- `uv run --dev pytest -q`
+- `uv run --dev pytest -q tests/test_packaging.py`
+- `uv build --wheel`
+- `uv tool run unforgettable --help`
+- `uv tool run unforgettable --version`
+- `uvx unforgettable --help` where the `uvx` alias is installed
+- `uvx unforgettable --version` where the `uvx` alias is installed
+- `unforgettable --help` after installing the built wheel
+- `python -m unforgettable --help` after installing the built wheel
+- `unforgettable --version` after installing the built wheel
+
+If `uvx` is not installed, record that it was unavailable and use
+`uv tool run unforgettable --help` and `uv tool run unforgettable --version` as
+the equivalent ephemeral execution checks. The packaging test builds the wheel
+and verifies installed console script, module execution, and version output
+contracts; keep it passing before release.
+
 ## See Also
 
 - GitHub: https://github.com/bouli/unforgettable

@@ -25,3 +25,19 @@ def test_readme_documents_local_ai_agent_tool_contract():
     assert "set notes --stdin" in readme
     assert "--output json" in readme
     assert '{"cache_ids": ["notes"]}' in readme
+
+
+def test_readme_documents_release_verification_checklist():
+    readme = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "### Release Verification" in readme
+    assert "uv tool run unforgettable --help" in readme
+    assert "uv tool run unforgettable --version" in readme
+    assert "uvx unforgettable --help" in readme
+    assert "uvx unforgettable --version" in readme
+    assert "If `uvx` is not installed" in readme
+    assert "unforgettable --help` after installing the built wheel" in readme
+    assert "python -m unforgettable --help` after installing the built wheel" in readme
+    assert "unforgettable --version` after installing the built wheel" in readme
+    assert "tests/test_packaging.py" in readme
+    assert "verifies installed console script, module execution, and version output" in readme
