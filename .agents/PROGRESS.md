@@ -51,6 +51,7 @@
   - Preserved cache IDs with spaces and punctuation through JSON strings.
   - Documented the output mode contract in `README.md` and CLI help.
   - Covered populated and empty JSON list output with tests that parse JSON.
+  - Reconciled the issue checklist with the completed implementation.
 - `.agents/issues/010-add-built-wheel-execution-tests.md`
   - Added built-wheel verification that runs `uv build --wheel` from the local checkout.
   - Installed the produced wheel into an isolated temporary virtual environment.
