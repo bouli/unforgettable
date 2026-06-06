@@ -56,3 +56,8 @@
   - Installed the produced wheel into an isolated temporary virtual environment.
   - Verified the installed `unforgettable --help`, `python -m unforgettable --help`, and `unforgettable --version` process contracts.
   - Kept the slice test-only with no new runtime dependencies.
+- `.agents/issues/011-document-agent-tool-contract.md`
+  - Added a separate local AI-agent tool contract section to `README.md`.
+  - Documented `uvx`, `uv tool run`, installed CLI, and `python -m unforgettable` execution paths.
+  - Documented exit codes, stdout/stderr separation, cache-folder policies, stdin-based `set`, JSON `list`, and version checks.
+  - Added a README contract test covering the documented agent-facing behavior.
