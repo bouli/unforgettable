@@ -48,7 +48,7 @@ def test_local_checkout_module_execution_shows_cli_help():
 
     assert result.returncode == 0
     assert "Inspect and maintain an Unforgettable cache." in result.stdout
-    assert "{list,set,get,exists,clean}" in result.stdout
+    assert "{list,set,get,exists,delete,clean}" in result.stdout
     assert "--cache-folder" in result.stdout
     assert ".unforgettable-memory" in result.stdout
 
@@ -61,7 +61,7 @@ def test_local_checkout_console_script_shows_cli_help():
 
     assert result.returncode == 0
     assert "Inspect and maintain an Unforgettable cache." in result.stdout
-    assert "{list,set,get,exists,clean}" in result.stdout
+    assert "{list,set,get,exists,delete,clean}" in result.stdout
     assert "--cache-folder" in result.stdout
     assert ".unforgettable-memory" in result.stdout
 
@@ -417,6 +417,66 @@ def test_cli_exists_round_trips_cache_ids_with_spaces_and_punctuation(tmp_path):
     assert result.returncode == 0
     assert result.stderr == ""
     assert json.loads(result.stdout) == {"cache_id": cache_id, "exists": True}
+
+
+def test_cli_delete_removes_cache_id_from_get_list_manifest_and_files(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="first value", cache_id="first")
+    cache.set(content="second value", cache_id="second")
+
+    result = run_cli("--cache-folder", str(tmp_path), "delete", "first")
+    list_result = run_cli("--cache-folder", str(tmp_path), "list")
+    get_result = run_cli("--cache-folder", str(tmp_path), "get", "first")
+
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert list_result.returncode == 0
+    assert list_result.stdout.splitlines() == ["second"]
+    assert get_result.returncode == 1
+    assert get_result.stdout == ""
+    assert get_result.stderr == "unforgettable: cache ID not found: first\n"
+    manifest = json.loads((tmp_path / "cache_manifest.json").read_text())
+    assert "first" not in manifest["entries"]
+    assert "second" in manifest["entries"]
+    assert not (tmp_path / "1.cache").exists()
+    assert (tmp_path / "2.cache").exists()
+
+
+def test_cli_delete_missing_cache_id_exits_one_with_diagnostic(tmp_path):
+    result = run_cli("--cache-folder", str(tmp_path), "delete", "missing")
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr == "unforgettable: cache ID not found: missing\n"
+
+
+def test_cli_delete_repeated_deletion_exits_one_on_second_attempt(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id="repeat")
+
+    first_result = run_cli("--cache-folder", str(tmp_path), "delete", "repeat")
+    second_result = run_cli("--cache-folder", str(tmp_path), "delete", "repeat")
+
+    assert first_result.returncode == 0
+    assert first_result.stdout == ""
+    assert first_result.stderr == ""
+    assert second_result.returncode == 1
+    assert second_result.stdout == ""
+    assert second_result.stderr == "unforgettable: cache ID not found: repeat\n"
+
+
+def test_cli_delete_round_trips_cache_ids_with_spaces_and_punctuation(tmp_path):
+    cache_id = "id with spaces: and punctuation?!"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id=cache_id)
+
+    result = run_cli("--cache-folder", str(tmp_path), "delete", cache_id)
+
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert unforgettable(cache_folder=str(tmp_path)).list() == []
 
 
 def test_cli_clean_removes_entries_from_selected_cache_folder(tmp_path):

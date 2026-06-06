@@ -18,3 +18,12 @@
 - Documented the existence-check command and API in the README.
 - Added regression coverage for present entries, missing entries, JSON output, text output, and cache IDs with spaces and punctuation.
 - Verification: `uv run pytest` passed with 50 tests.
+
+## 2026-06-06 - 003 Single-Entry Deletion
+
+- Added `cache.delete(cache_id)` to the Python API, returning `True` when an entry is removed and `False` when the cache ID is missing.
+- Added `delete CACHE_ID` to the CLI; successful deletion exits `0` with no stdout, while missing IDs exit `1` with a stderr diagnostic.
+- Deletion now removes the selected content file and updates both `cache_index.yaml` and `cache_manifest.json` while preserving unrelated entries.
+- Documented the deletion command and API in the README.
+- Added regression coverage for successful deletion, missing deletion, repeated deletion, IDs with spaces and punctuation, and post-delete `list`/`get` behavior.
+- Verification: `uv run pytest` passed with 56 tests.

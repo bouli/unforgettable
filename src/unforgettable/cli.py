@@ -88,6 +88,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     exists_parser.add_argument("cache_id", help="Cache ID to check.")
 
+    delete_parser = subparsers.add_parser(
+        "delete",
+        help="Delete cached content.",
+    )
+    delete_parser.add_argument("cache_id", help="Cache ID to delete.")
+
     subparsers.add_parser("clean", help="Remove cached values.")
 
     return parser
@@ -157,6 +163,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             print("true" if exists else "false")
         return 0 if exists else 1
+
+    if args.command == "delete":
+        deleted = cache.delete(cache_id=args.cache_id)
+        if not deleted:
+            parser.exit(1, f"unforgettable: cache ID not found: {args.cache_id}\n")
+        return 0
 
     if args.command == "clean":
         cache.clean()

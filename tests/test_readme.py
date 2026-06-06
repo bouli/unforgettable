@@ -15,6 +15,7 @@ def test_readme_documents_local_ai_agent_tool_contract():
     assert "unforgettable --version" in readme
     assert "Missing cache IDs for `get` exit with status code `1`." in readme
     assert "Missing cache IDs for `exists` exit with status code `1`." in readme
+    assert "Missing cache IDs for `delete` exit with status code `1`." in readme
     assert (
         "Invalid usage, such as missing required arguments, exits with status code `2`."
         in readme
@@ -25,6 +26,7 @@ def test_readme_documents_local_ai_agent_tool_contract():
     assert "--no-create-cache-folder" in readme
     assert "set notes --stdin" in readme
     assert "exists notes" in readme
+    assert "delete notes" in readme
     assert "--output json" in readme
     assert '{"cache_id": "notes", "exists": true}' in readme
     assert '{"cache_ids": ["notes"]}' in readme

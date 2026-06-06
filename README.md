@@ -185,6 +185,16 @@ unforgettable --cache-folder .unforgettable-cache exists greeting
 The `exists` command writes `true` or `false` in text mode. It exits with status
 code `0` when the cache ID exists and status code `1` when it is missing.
 
+Delete one cache ID without clearing the whole cache folder:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache delete greeting
+```
+
+The `delete` command exits with status code `0` after removing an entry. It
+exits with status code `1` and writes a diagnostic to stderr when the cache ID
+is missing.
+
 Clean the selected cache folder:
 
 ```shell
@@ -225,6 +235,7 @@ The CLI uses stable process behavior suitable for unattended tools:
 - Successful commands exit with status code `0`.
 - Missing cache IDs for `get` exit with status code `1`.
 - Missing cache IDs for `exists` exit with status code `1`.
+- Missing cache IDs for `delete` exit with status code `1`.
 - Rejected cache-folder creation exits with status code `1`.
 - Invalid usage, such as missing required arguments, exits with status code `2`.
 - Command values are written to stdout.
@@ -266,6 +277,15 @@ unforgettable --cache-folder .agent-cache exists notes
 
 Text `exists` output is `true` or `false`. The command exits with status code
 `0` when the cache ID exists and status code `1` when it is missing.
+
+Delete one obsolete entry without erasing unrelated memory:
+
+```shell
+unforgettable --cache-folder .agent-cache delete notes
+```
+
+`delete` exits with status code `0` when it removes an entry. It exits with
+status code `1` and writes a stderr diagnostic when the cache ID is missing.
 
 Plain text output is the default. Use `--output json` when a command supports
 structured output:
@@ -378,6 +398,14 @@ Returns the cached value for `cache_id`.
 ### `cache.exists(cache_id)`
 
 Returns `True` when `cache_id` has a cached value and `False` when it does not.
+
+### `cache.delete(cache_id)`
+
+Removes the cached value for `cache_id`.
+
+- Returns `True` when an entry was removed.
+- Returns `False` when the cache entry does not exist.
+- Preserves unrelated cache entries.
 
 ### `cache.list()`
 

@@ -84,6 +84,29 @@ class unforgettable:
         cached_file_path = os.path.join(cache_folder, cached_file_name)
         return os.path.exists(cached_file_path)
 
+    @safe_cache_id
+    def delete(self, cache_id: str) -> bool:
+        index_entries = self._read_index_entries()
+        cached_file_index = self.get_index_from_file_index(_safe_cache_id=cache_id)
+        if cached_file_index is None:
+            return False
+
+        cache_folder = self.get_cache_folder()
+        cached_file_name = f"{cached_file_index}.{self.cache_files_extension}"
+        cached_file_path = os.path.join(cache_folder, cached_file_name)
+        if os.path.exists(cached_file_path):
+            os.remove(cached_file_path)
+
+        remaining_entries = [
+            entry for entry in index_entries if entry[0] != cached_file_index
+        ]
+        self._write_index_entries(remaining_entries)
+
+        manifest = self._read_manifest()
+        manifest["entries"].pop(self._unsafe_cache_id(cache_id), None)
+        self._write_manifest(manifest)
+        return True
+
     def list(self) -> list[str]:
         cache_ids = []
         for _, cache_id in self._read_index_entries():

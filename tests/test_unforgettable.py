@@ -55,6 +55,30 @@ def test_overwrites_existing_cache_entry(tmp_path):
     assert cache.list() == ["repeat"]
 
 
+def test_delete_removes_single_cache_entry_index_manifest_and_file(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="first value", cache_id="first")
+    cache.set(content="second value", cache_id="second")
+
+    assert cache.delete(cache_id="first") is True
+
+    assert cache.get(cache_id="first") is None
+    assert cache.exists(cache_id="first") is False
+    assert cache.get(cache_id="second") == "second value"
+    assert cache.list() == ["second"]
+    manifest = json.loads((tmp_path / "cache_manifest.json").read_text())
+    assert "first" not in manifest["entries"]
+    assert manifest["entries"]["second"]["file_name"] == "2.cache"
+    assert not (tmp_path / "1.cache").exists()
+    assert (tmp_path / "2.cache").exists()
+
+
+def test_delete_returns_false_for_missing_cache_id(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+
+    assert cache.delete(cache_id="missing") is False
+
+
 def test_multiple_cache_ids_are_retrieved_independently(tmp_path):
     cache = unforgettable(cache_folder=str(tmp_path))
 
