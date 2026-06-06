@@ -1,5 +1,6 @@
 import json
 import os
+from base64 import b64encode
 from pathlib import Path
 import shutil
 import subprocess
@@ -48,7 +49,7 @@ def test_local_checkout_module_execution_shows_cli_help():
 
     assert result.returncode == 0
     assert "Inspect and maintain an Unforgettable cache." in result.stdout
-    assert "{list,set,get,clean}" in result.stdout
+    assert "{list,set,get,exists,delete,info,export,import,clean}" in result.stdout
     assert "--cache-folder" in result.stdout
     assert ".unforgettable-memory" in result.stdout
 
@@ -61,7 +62,7 @@ def test_local_checkout_console_script_shows_cli_help():
 
     assert result.returncode == 0
     assert "Inspect and maintain an Unforgettable cache." in result.stdout
-    assert "{list,set,get,clean}" in result.stdout
+    assert "{list,set,get,exists,delete,info,export,import,clean}" in result.stdout
     assert "--cache-folder" in result.stdout
     assert ".unforgettable-memory" in result.stdout
 
@@ -345,6 +346,511 @@ def test_cli_get_prints_cached_text_from_selected_cache_folder(tmp_path):
     assert result.stdout == "stored value"
 
 
+def test_cli_get_raw_text_has_no_added_trailing_newline(tmp_path):
+    content = "stored value"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content=content, cache_id="script-key")
+
+    result = run_cli("--cache-folder", str(tmp_path), "get", "script-key")
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert result.stdout == content
+
+
+def test_cli_get_json_outputs_structured_text_content(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id="script-key")
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "get",
+        "script-key",
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    entry = json.loads(result.stdout)
+    assert entry["cache_id"] == "script-key"
+    assert entry["content"] == "stored value"
+    assert entry["encoding"] == "utf-8"
+    assert entry["metadata"]["cache_id"] == "script-key"
+    assert entry["metadata"]["content_type"] == "text/plain"
+    assert entry["metadata"]["byte_size"] == len("stored value".encode())
+
+
+def test_cli_get_json_round_trips_multiline_content(tmp_path):
+    content = "first line\nsecond line\n"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content=content, cache_id="multiline")
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "get",
+        "multiline",
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    entry = json.loads(result.stdout)
+    assert entry["content"] == content
+    assert entry["encoding"] == "utf-8"
+
+
+def test_cli_get_json_outputs_base64_encoded_binary_content(tmp_path):
+    content = b"\x80\x81cached bytes"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content=content, cache_id="binary")
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "get",
+        "binary",
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    entry = json.loads(result.stdout)
+    assert entry["cache_id"] == "binary"
+    assert entry["content"] == b64encode(content).decode("ascii")
+    assert entry["encoding"] == "base64"
+    assert entry["metadata"]["content_type"] == "application/octet-stream"
+    assert entry["metadata"]["byte_size"] == len(content)
+
+
+def test_cli_get_json_round_trips_cache_ids_with_spaces_and_punctuation(tmp_path):
+    cache_id = "id with spaces: and punctuation?!"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id=cache_id)
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "get",
+        cache_id,
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert json.loads(result.stdout)["cache_id"] == cache_id
+
+
+def test_cli_exists_present_cache_id_exits_zero_with_text_result(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id="script-key")
+
+    result = run_cli("--cache-folder", str(tmp_path), "exists", "script-key")
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert result.stdout == "true\n"
+
+
+def test_cli_exists_missing_cache_id_exits_one_with_text_result(tmp_path):
+    result = run_cli("--cache-folder", str(tmp_path), "exists", "missing")
+
+    assert result.returncode == 1
+    assert result.stderr == ""
+    assert result.stdout == "false\n"
+
+
+def test_cli_exists_json_outputs_cache_id_and_boolean_result(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id="script-key")
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "exists",
+        "script-key",
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert json.loads(result.stdout) == {
+        "cache_id": "script-key",
+        "exists": True,
+    }
+
+
+def test_cli_exists_json_missing_cache_id_exits_one_with_false_result(tmp_path):
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "exists",
+        "missing",
+    )
+
+    assert result.returncode == 1
+    assert result.stderr == ""
+    assert json.loads(result.stdout) == {"cache_id": "missing", "exists": False}
+
+
+def test_cli_exists_round_trips_cache_ids_with_spaces_and_punctuation(tmp_path):
+    cache_id = "id with spaces: and punctuation?!"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id=cache_id)
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "exists",
+        cache_id,
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert json.loads(result.stdout) == {"cache_id": cache_id, "exists": True}
+
+
+def test_cli_delete_removes_cache_id_from_get_list_manifest_and_files(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="first value", cache_id="first")
+    cache.set(content="second value", cache_id="second")
+
+    result = run_cli("--cache-folder", str(tmp_path), "delete", "first")
+    list_result = run_cli("--cache-folder", str(tmp_path), "list")
+    get_result = run_cli("--cache-folder", str(tmp_path), "get", "first")
+
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert list_result.returncode == 0
+    assert list_result.stdout.splitlines() == ["second"]
+    assert get_result.returncode == 1
+    assert get_result.stdout == ""
+    assert get_result.stderr == "unforgettable: cache ID not found: first\n"
+    manifest = json.loads((tmp_path / "cache_manifest.json").read_text())
+    assert "first" not in manifest["entries"]
+    assert "second" in manifest["entries"]
+    assert not (tmp_path / "1.cache").exists()
+    assert (tmp_path / "2.cache").exists()
+
+
+def test_cli_delete_missing_cache_id_exits_one_with_diagnostic(tmp_path):
+    result = run_cli("--cache-folder", str(tmp_path), "delete", "missing")
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr == "unforgettable: cache ID not found: missing\n"
+
+
+def test_cli_delete_repeated_deletion_exits_one_on_second_attempt(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id="repeat")
+
+    first_result = run_cli("--cache-folder", str(tmp_path), "delete", "repeat")
+    second_result = run_cli("--cache-folder", str(tmp_path), "delete", "repeat")
+
+    assert first_result.returncode == 0
+    assert first_result.stdout == ""
+    assert first_result.stderr == ""
+    assert second_result.returncode == 1
+    assert second_result.stdout == ""
+    assert second_result.stderr == "unforgettable: cache ID not found: repeat\n"
+
+
+def test_cli_delete_round_trips_cache_ids_with_spaces_and_punctuation(tmp_path):
+    cache_id = "id with spaces: and punctuation?!"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id=cache_id)
+
+    result = run_cli("--cache-folder", str(tmp_path), "delete", cache_id)
+
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert unforgettable(cache_folder=str(tmp_path)).list() == []
+
+
+def test_cli_info_prints_readable_metadata(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id="script-key")
+
+    result = run_cli("--cache-folder", str(tmp_path), "info", "script-key")
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    lines = result.stdout.splitlines()
+    assert lines[0] == "cache_id: script-key"
+    assert lines[1] == "file_name: 1.cache"
+    assert lines[2] == f"byte_size: {len('stored value'.encode())}"
+    assert lines[3] == "content_type: text/plain"
+    assert lines[4].startswith("created_at: ")
+    assert lines[5].startswith("updated_at: ")
+
+
+def test_cli_info_json_outputs_metadata_shape(tmp_path):
+    cache_id = "id with spaces: and punctuation?!"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id=cache_id)
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "info",
+        cache_id,
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    metadata = json.loads(result.stdout)
+    assert metadata["cache_id"] == cache_id
+    assert metadata["file_name"] == "1.cache"
+    assert metadata["byte_size"] == len("stored value".encode())
+    assert metadata["content_type"] == "text/plain"
+    assert metadata["created_at"]
+    assert metadata["updated_at"]
+
+
+def test_cli_info_missing_cache_id_exits_one_with_diagnostic(tmp_path):
+    result = run_cli("--cache-folder", str(tmp_path), "info", "missing")
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr == "unforgettable: cache ID not found: missing\n"
+
+
+def test_cli_info_derives_metadata_for_legacy_cache_folder(tmp_path):
+    (tmp_path / "cache_index.yaml").write_text('0: cache_index.yaml\n1: "legacy"')
+    (tmp_path / "1.cache").write_text("legacy value")
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "info",
+        "legacy",
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    metadata = json.loads(result.stdout)
+    assert metadata["cache_id"] == "legacy"
+    assert metadata["file_name"] == "1.cache"
+    assert metadata["byte_size"] == len("legacy value".encode())
+    assert metadata["content_type"] == "text/plain"
+    assert metadata["created_at"] == metadata["updated_at"]
+
+
+def test_cli_export_outputs_empty_entries_for_empty_cache_folder(tmp_path):
+    result = run_cli("--cache-folder", str(tmp_path), "export")
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert json.loads(result.stdout) == {"entries": []}
+
+
+def test_cli_export_outputs_multiple_structured_entries(tmp_path):
+    cache_id = "id with spaces: and punctuation?!"
+    multiline = "first line\nsecond line\n"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content=multiline, cache_id=cache_id)
+    cache.set(content="second value", cache_id="second")
+
+    result = run_cli("--cache-folder", str(tmp_path), "export")
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    exported = json.loads(result.stdout)
+    assert [entry["cache_id"] for entry in exported["entries"]] == [
+        cache_id,
+        "second",
+    ]
+    assert exported["entries"][0]["content"] == multiline
+    assert exported["entries"][0]["encoding"] == "utf-8"
+    assert exported["entries"][0]["metadata"]["cache_id"] == cache_id
+    assert exported["entries"][0]["metadata"]["byte_size"] == len(multiline.encode())
+    assert exported["entries"][1]["content"] == "second value"
+    assert exported["entries"][1]["encoding"] == "utf-8"
+
+
+def test_cli_export_outputs_base64_encoded_binary_content(tmp_path):
+    content = b"\x80\x81cached bytes"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content=content, cache_id="binary")
+
+    result = run_cli("--cache-folder", str(tmp_path), "export")
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    exported = json.loads(result.stdout)
+    entry = exported["entries"][0]
+    assert entry["cache_id"] == "binary"
+    assert entry["content"] == b64encode(content).decode("ascii")
+    assert entry["encoding"] == "base64"
+    assert entry["metadata"]["content_type"] == "application/octet-stream"
+    assert entry["metadata"]["byte_size"] == len(content)
+
+
+def test_cli_export_derives_metadata_for_legacy_cache_folder(tmp_path):
+    (tmp_path / "cache_index.yaml").write_text('0: cache_index.yaml\n1: "legacy"')
+    (tmp_path / "1.cache").write_text("legacy value")
+
+    result = run_cli("--cache-folder", str(tmp_path), "export")
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    exported = json.loads(result.stdout)
+    assert len(exported["entries"]) == 1
+    entry = exported["entries"][0]
+    assert entry["cache_id"] == "legacy"
+    assert entry["content"] == "legacy value"
+    assert entry["encoding"] == "utf-8"
+    assert entry["metadata"]["byte_size"] == len("legacy value".encode())
+    assert entry["metadata"]["created_at"] == entry["metadata"]["updated_at"]
+
+
+def test_cli_import_stdin_restores_exported_entries(tmp_path):
+    source_cache = unforgettable(cache_folder=str(tmp_path / "source"))
+    cache_id = "id with spaces: and punctuation?!"
+    multiline = "first line\nsecond line\n"
+    source_cache.set(content=multiline, cache_id=cache_id)
+    source_cache.set(content="second value", cache_id="second")
+    exported = source_cache.export()
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path / "target"),
+        "--create-cache-folder",
+        "import",
+        "--stdin",
+        input=json.dumps(exported),
+    )
+
+    target_cache = unforgettable(cache_folder=str(tmp_path / "target"))
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert target_cache.get(cache_id=cache_id) == multiline
+    assert target_cache.get(cache_id="second") == "second value"
+    assert target_cache.info(cache_id=cache_id)["created_at"] == (
+        exported["entries"][0]["metadata"]["created_at"]
+    )
+
+
+def test_cli_import_upserts_matching_ids_and_preserves_unrelated_entries(tmp_path):
+    source_cache = unforgettable(cache_folder=str(tmp_path / "source"))
+    source_cache.set(content="replacement", cache_id="shared")
+    exported = source_cache.export()
+    target_cache = unforgettable(cache_folder=str(tmp_path / "target"))
+    target_cache.set(content="original", cache_id="shared")
+    target_cache.set(content="keep me", cache_id="unrelated")
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path / "target"),
+        "import",
+        "--stdin",
+        input=json.dumps(exported),
+    )
+
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert target_cache.get(cache_id="shared") == "replacement"
+    assert target_cache.get(cache_id="unrelated") == "keep me"
+
+
+def test_cli_import_round_trips_base64_encoded_binary_content(tmp_path):
+    content = b"\x80\x81cached bytes"
+    source_cache = unforgettable(cache_folder=str(tmp_path / "source"))
+    source_cache.set(content=content, cache_id="binary")
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path / "target"),
+        "--create-cache-folder",
+        "import",
+        "--stdin",
+        input=json.dumps(source_cache.export()),
+    )
+
+    target_cache = unforgettable(cache_folder=str(tmp_path / "target"))
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert target_cache.get(cache_id="binary") == content
+    assert target_cache.info(cache_id="binary")["content_type"] == (
+        "application/octet-stream"
+    )
+
+
+def test_cli_import_malformed_json_exits_one_with_diagnostic(tmp_path):
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "import",
+        "--stdin",
+        input="{not json",
+    )
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr.startswith("unforgettable: invalid import JSON:")
+
+
+def test_cli_import_empty_stdin_exits_one_with_diagnostic(tmp_path):
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "import",
+        "--stdin",
+        input="",
+    )
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr == "unforgettable: no stdin content received\n"
+
+
+def test_cli_import_invalid_data_leaves_existing_memory_unchanged(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="existing", cache_id="keep")
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "import",
+        "--stdin",
+        input=json.dumps({"entries": [{"cache_id": "new", "content": "value"}]}),
+    )
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr.startswith("unforgettable: invalid import data:")
+    assert cache.get(cache_id="keep") == "existing"
+    assert cache.exists(cache_id="new") is False
+
+
+def test_cli_import_requires_stdin_flag(tmp_path):
+    result = run_cli("--cache-folder", str(tmp_path), "import")
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == "unforgettable: import requires --stdin\n"
+
+
 def test_cli_clean_removes_entries_from_selected_cache_folder(tmp_path):
     cache = unforgettable(cache_folder=str(tmp_path))
     cache.set(content="stored value", cache_id="script-key")
@@ -359,6 +865,21 @@ def test_cli_clean_removes_entries_from_selected_cache_folder(tmp_path):
 
 def test_cli_get_missing_cache_id_exits_nonzero_with_message(tmp_path):
     result = run_cli("--cache-folder", str(tmp_path), "get", "missing")
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr == "unforgettable: cache ID not found: missing\n"
+
+
+def test_cli_get_json_missing_cache_id_exits_nonzero_with_message(tmp_path):
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "get",
+        "missing",
+    )
 
     assert result.returncode == 1
     assert result.stdout == ""

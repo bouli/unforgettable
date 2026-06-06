@@ -1,4 +1,15 @@
+from __future__ import annotations
+
+import json
 import os
+import tempfile
+from base64 import b64decode, b64encode
+from binascii import Error as BinasciiError
+from datetime import UTC, datetime
+
+
+CACHE_INDEX_FILE_NAME = "cache_index.yaml"
+CACHE_MANIFEST_FILE_NAME = "cache_manifest.json"
 
 
 class unforgettable:
@@ -36,23 +47,27 @@ class unforgettable:
     @safe_cache_id
     def set(self, content: str, cache_id: str):
         cache_folder = self.get_cache_folder()
-        cache_index_file_path = self.get_cache_index_path()
-
-        cache_folder_files = os.listdir(cache_folder)
+        index_entries = self._read_index_entries()
         cached_file_index = self.get_index_from_file_index(_safe_cache_id=cache_id)
         if cached_file_index is not None:
             new_file_index = cached_file_index
         else:
-            new_file_index = len(cache_folder_files)
-            with open(cache_index_file_path, "a") as cache_index_file_writer:
-                cache_index_file_writer.write(f"\n{new_file_index}: {cache_id}")
+            new_file_index = self._next_file_index(index_entries)
+            index_entries.append((new_file_index, cache_id))
+            self._write_index_entries(index_entries)
 
         new_file_name = f"{new_file_index}.{self.cache_files_extension}"
         new_file_path = os.path.join(cache_folder, new_file_name)
-        with open(new_file_path, "wb") as new_file_writer:
-            if type(content) == str:
-                content = content.encode()
-            new_file_writer.write(content)
+        content_type = "text/plain" if type(content) == str else "application/octet-stream"
+        if type(content) == str:
+            content = content.encode()
+        self._atomic_write_bytes(new_file_path, content)
+        self._record_manifest_entry(
+            cache_id=cache_id,
+            file_name=new_file_name,
+            byte_size=len(content),
+            content_type=content_type,
+        )
 
     @safe_cache_id
     def get(self, cache_id: str) -> str:
@@ -60,46 +75,142 @@ class unforgettable:
         code = self.get_cached_file_by_index(cached_file_index=cached_file_index)
         return code
 
+    @safe_cache_id
+    def get_entry(self, cache_id: str) -> dict | None:
+        content = self.get(cache_id=cache_id)
+        if content is None:
+            return None
+
+        if isinstance(content, bytes):
+            encoded_content = b64encode(content).decode("ascii")
+            encoding = "base64"
+        else:
+            encoded_content = content
+            encoding = "utf-8"
+
+        return {
+            "cache_id": self._unsafe_cache_id(cache_id),
+            "content": encoded_content,
+            "encoding": encoding,
+            "metadata": self.info(cache_id=cache_id),
+        }
+
+    def export(self) -> dict:
+        entries = []
+        for cache_id in self.list():
+            entry = self.get_entry(cache_id=cache_id)
+            if entry is not None:
+                entries.append(entry)
+
+        return {"entries": entries}
+
+    def import_entries(self, exported_entries: dict) -> dict:
+        entries = self._validate_import_entries(exported_entries)
+        for entry in entries:
+            self.set(content=entry["content"], cache_id=entry["cache_id"])
+            if entry["metadata"] is not None:
+                self._record_imported_manifest_entry(
+                    cache_id=entry["cache_id"],
+                    metadata=entry["metadata"],
+                )
+
+        return {"imported": len(entries)}
+
+    @safe_cache_id
+    def exists(self, cache_id: str) -> bool:
+        cached_file_index = self.get_index_from_file_index(_safe_cache_id=cache_id)
+        if cached_file_index is None:
+            return False
+
+        cache_folder = self.get_cache_folder()
+        cached_file_name = f"{cached_file_index}.{self.cache_files_extension}"
+        cached_file_path = os.path.join(cache_folder, cached_file_name)
+        return os.path.exists(cached_file_path)
+
+    @safe_cache_id
+    def delete(self, cache_id: str) -> bool:
+        index_entries = self._read_index_entries()
+        cached_file_index = self.get_index_from_file_index(_safe_cache_id=cache_id)
+        if cached_file_index is None:
+            return False
+
+        cache_folder = self.get_cache_folder()
+        cached_file_name = f"{cached_file_index}.{self.cache_files_extension}"
+        cached_file_path = os.path.join(cache_folder, cached_file_name)
+        if os.path.exists(cached_file_path):
+            os.remove(cached_file_path)
+
+        remaining_entries = [
+            entry for entry in index_entries if entry[0] != cached_file_index
+        ]
+        self._write_index_entries(remaining_entries)
+
+        manifest = self._read_manifest()
+        manifest["entries"].pop(self._unsafe_cache_id(cache_id), None)
+        self._write_manifest(manifest)
+        return True
+
+    @safe_cache_id
+    def info(self, cache_id: str) -> dict | None:
+        cached_file_index = self.get_index_from_file_index(_safe_cache_id=cache_id)
+        if cached_file_index is None:
+            return None
+
+        cache_folder = self.get_cache_folder()
+        cached_file_name = f"{cached_file_index}.{self.cache_files_extension}"
+        cached_file_path = os.path.join(cache_folder, cached_file_name)
+        if not os.path.exists(cached_file_path):
+            return None
+
+        raw_cache_id = self._unsafe_cache_id(cache_id)
+        manifest = self._read_manifest()
+        manifest_entry = manifest["entries"].get(raw_cache_id)
+        if manifest_entry is not None:
+            return dict(manifest_entry)
+
+        file_stats = os.stat(cached_file_path)
+        timestamp = datetime.fromtimestamp(file_stats.st_mtime, UTC).isoformat()
+        content_type = (
+            "application/octet-stream"
+            if self.is_file_binary(cached_file_path)
+            else "text/plain"
+        )
+        return {
+            "cache_id": raw_cache_id,
+            "file_name": cached_file_name,
+            "byte_size": file_stats.st_size,
+            "content_type": content_type,
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        }
+
     def list(self) -> list[str]:
         cache_ids = []
-        cache_index_file_name = os.path.basename(self.get_cache_index_path())
-
-        for line in self.get_cache_index_file().splitlines():
-            if ": " not in line:
-                continue
-
-            _, cache_id = line.split(": ", 1)
-            cache_id = cache_id.strip()
-            if cache_id == cache_index_file_name:
-                continue
-
-            if cache_id.startswith('"') and cache_id.endswith('"'):
-                cache_id = cache_id[1:-1]
-
-            cache_ids.append(cache_id)
+        for _, cache_id in self._read_index_entries():
+            cache_ids.append(self._unsafe_cache_id(cache_id))
 
         return cache_ids
 
     def get_index_from_file_index(self, _safe_cache_id):
-        cache_index_file = self.get_cache_index_file()
-        if cache_index_file.find(_safe_cache_id) < 1:
-            return None
-        cache_index_file = cache_index_file[: cache_index_file.find(_safe_cache_id) - 2]
-        cached_file_index = int(cache_index_file.split("\n")[-1].strip())
-        return cached_file_index
+        for cached_file_index, cache_id in self._read_index_entries():
+            if cache_id == _safe_cache_id:
+                return cached_file_index
+        return None
 
     def get_cache_index_path(
         self,
     ) -> str:
-        cache_index_file_name = "cache_index.yaml"
         cache_folder = self.get_cache_folder()
-        cache_index_file_path = os.path.join(cache_folder, cache_index_file_name)
+        cache_index_file_path = os.path.join(cache_folder, CACHE_INDEX_FILE_NAME)
 
         if not os.path.exists(cache_index_file_path):
-            with open(cache_index_file_path, "w+") as cache_index_file_writer:
-                cache_index_file_writer.write(f"0: {cache_index_file_name}")
+            self._atomic_write_text(cache_index_file_path, f"0: {CACHE_INDEX_FILE_NAME}")
 
         return cache_index_file_path
+
+    def get_cache_manifest_path(self) -> str:
+        cache_folder = self.get_cache_folder()
+        return os.path.join(cache_folder, CACHE_MANIFEST_FILE_NAME)
 
     def get_cache_index_file(
         self,
@@ -153,3 +264,144 @@ class unforgettable:
                 return False
         except UnicodeDecodeError:
             return True
+
+    def _read_index_entries(self) -> list[tuple[int, str]]:
+        entries = []
+        cache_index_file_name = os.path.basename(self.get_cache_index_path())
+
+        for line in self.get_cache_index_file().splitlines():
+            if ": " not in line:
+                continue
+
+            file_index, cache_id = line.split(": ", 1)
+            cache_id = cache_id.strip()
+            if cache_id == cache_index_file_name:
+                continue
+
+            entries.append((int(file_index.strip()), cache_id))
+
+        return entries
+
+    def _write_index_entries(self, entries: list[tuple[int, str]]):
+        lines = [f"0: {CACHE_INDEX_FILE_NAME}"]
+        lines.extend(f"{file_index}: {cache_id}" for file_index, cache_id in entries)
+        self._atomic_write_text(self.get_cache_index_path(), "\n".join(lines))
+
+    def _next_file_index(self, entries: list[tuple[int, str]]) -> int:
+        if not entries:
+            return 1
+        return max(file_index for file_index, _ in entries) + 1
+
+    def _read_manifest(self) -> dict:
+        manifest_path = self.get_cache_manifest_path()
+        if not os.path.exists(manifest_path):
+            return {"version": 1, "entries": {}}
+
+        with open(manifest_path, "r", encoding="utf-8") as manifest_reader:
+            return json.load(manifest_reader)
+
+    def _write_manifest(self, manifest: dict):
+        manifest_path = self.get_cache_manifest_path()
+        manifest_json = json.dumps(manifest, indent=2, sort_keys=True)
+        self._atomic_write_text(manifest_path, f"{manifest_json}\n")
+
+    def _record_manifest_entry(
+        self,
+        cache_id: str,
+        file_name: str,
+        byte_size: int,
+        content_type: str,
+    ):
+        manifest = self._read_manifest()
+        raw_cache_id = self._unsafe_cache_id(cache_id)
+        existing_entry = manifest["entries"].get(raw_cache_id)
+        now = datetime.now(UTC).isoformat()
+        created_at = existing_entry["created_at"] if existing_entry else now
+        manifest["entries"][raw_cache_id] = {
+            "cache_id": raw_cache_id,
+            "file_name": file_name,
+            "byte_size": byte_size,
+            "content_type": content_type,
+            "created_at": created_at,
+            "updated_at": now,
+        }
+        self._write_manifest(manifest)
+
+    def _record_imported_manifest_entry(self, cache_id: str, metadata: dict):
+        current_metadata = self.info(cache_id=cache_id)
+        if current_metadata is None:
+            return
+
+        manifest = self._read_manifest()
+        entry = dict(current_metadata)
+        for key in ("created_at", "updated_at"):
+            if key in metadata:
+                entry[key] = metadata[key]
+        manifest["entries"][cache_id] = entry
+        self._write_manifest(manifest)
+
+    def _validate_import_entries(self, exported_entries: dict) -> list[dict]:
+        if not isinstance(exported_entries, dict):
+            raise ValueError("import JSON must be an object")
+        entries = exported_entries.get("entries")
+        if not isinstance(entries, list):
+            raise ValueError("import JSON must contain an entries list")
+
+        validated_entries = []
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                raise ValueError(f"entry {index} must be an object")
+
+            cache_id = entry.get("cache_id")
+            content = entry.get("content")
+            encoding = entry.get("encoding")
+            metadata = entry.get("metadata")
+            if not isinstance(cache_id, str):
+                raise ValueError(f"entry {index} cache_id must be a string")
+            if not isinstance(content, str):
+                raise ValueError(f"entry {index} content must be a string")
+            if metadata is not None and not isinstance(metadata, dict):
+                raise ValueError(f"entry {index} metadata must be an object")
+
+            if encoding == "utf-8":
+                decoded_content = content
+            elif encoding == "base64":
+                try:
+                    decoded_content = b64decode(content, validate=True)
+                except BinasciiError as exc:
+                    raise ValueError(f"entry {index} content is invalid base64") from exc
+            else:
+                raise ValueError(
+                    f"entry {index} encoding must be utf-8 or base64"
+                )
+
+            validated_entries.append(
+                {
+                    "cache_id": cache_id,
+                    "content": decoded_content,
+                    "metadata": metadata,
+                }
+            )
+
+        return validated_entries
+
+    def _unsafe_cache_id(self, cache_id: str) -> str:
+        if cache_id.startswith('"') and cache_id.endswith('"'):
+            return cache_id[1:-1]
+        return cache_id
+
+    def _atomic_write_text(self, file_path: str, content: str):
+        self._atomic_write_bytes(file_path, content.encode("utf-8"))
+
+    def _atomic_write_bytes(self, file_path: str, content: bytes):
+        directory = os.path.dirname(file_path)
+        os.makedirs(directory, exist_ok=True)
+        file_descriptor, temporary_path = tempfile.mkstemp(dir=directory)
+        try:
+            with os.fdopen(file_descriptor, "wb") as temporary_file:
+                temporary_file.write(content)
+            os.replace(temporary_path, file_path)
+        except Exception:
+            if os.path.exists(temporary_path):
+                os.remove(temporary_path)
+            raise

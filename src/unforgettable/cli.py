@@ -82,6 +82,39 @@ def build_parser() -> argparse.ArgumentParser:
     get_parser = subparsers.add_parser("get", help="Retrieve cached content.")
     get_parser.add_argument("cache_id", help="Cache ID to retrieve.")
 
+    exists_parser = subparsers.add_parser(
+        "exists",
+        help="Check whether a cache ID exists.",
+    )
+    exists_parser.add_argument("cache_id", help="Cache ID to check.")
+
+    delete_parser = subparsers.add_parser(
+        "delete",
+        help="Delete cached content.",
+    )
+    delete_parser.add_argument("cache_id", help="Cache ID to delete.")
+
+    info_parser = subparsers.add_parser(
+        "info",
+        help="Inspect cached content metadata.",
+    )
+    info_parser.add_argument("cache_id", help="Cache ID to inspect.")
+
+    subparsers.add_parser(
+        "export",
+        help="Export all cached entries as JSON.",
+    )
+
+    import_parser = subparsers.add_parser(
+        "import",
+        help="Import exported cache entries as JSON.",
+    )
+    import_parser.add_argument(
+        "--stdin",
+        action="store_true",
+        help="Read exported JSON from stdin.",
+    )
+
     subparsers.add_parser("clean", help="Remove cached values.")
 
     return parser
@@ -135,6 +168,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "get":
+        if args.output == "json":
+            entry = cache.get_entry(cache_id=args.cache_id)
+            if entry is None:
+                parser.exit(1, f"unforgettable: cache ID not found: {args.cache_id}\n")
+            print(json.dumps(entry))
+            return 0
+
         content = cache.get(cache_id=args.cache_id)
         if content is None:
             parser.exit(1, f"unforgettable: cache ID not found: {args.cache_id}\n")
@@ -142,6 +182,58 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.buffer.write(content)
         else:
             sys.stdout.write(content)
+        return 0
+
+    if args.command == "exists":
+        exists = cache.exists(cache_id=args.cache_id)
+        if args.output == "json":
+            print(json.dumps({"cache_id": args.cache_id, "exists": exists}))
+        else:
+            print("true" if exists else "false")
+        return 0 if exists else 1
+
+    if args.command == "delete":
+        deleted = cache.delete(cache_id=args.cache_id)
+        if not deleted:
+            parser.exit(1, f"unforgettable: cache ID not found: {args.cache_id}\n")
+        return 0
+
+    if args.command == "info":
+        metadata = cache.info(cache_id=args.cache_id)
+        if metadata is None:
+            parser.exit(1, f"unforgettable: cache ID not found: {args.cache_id}\n")
+        if args.output == "json":
+            print(json.dumps(metadata))
+        else:
+            for key in (
+                "cache_id",
+                "file_name",
+                "byte_size",
+                "content_type",
+                "created_at",
+                "updated_at",
+            ):
+                print(f"{key}: {metadata[key]}")
+        return 0
+
+    if args.command == "export":
+        print(json.dumps(cache.export()))
+        return 0
+
+    if args.command == "import":
+        if not args.stdin:
+            parser.exit(2, "unforgettable: import requires --stdin\n")
+        import_content = sys.stdin.read()
+        if import_content == "":
+            parser.exit(1, "unforgettable: no stdin content received\n")
+        try:
+            exported_entries = json.loads(import_content)
+        except json.JSONDecodeError as exc:
+            parser.exit(1, f"unforgettable: invalid import JSON: {exc.msg}\n")
+        try:
+            cache.import_entries(exported_entries)
+        except ValueError as exc:
+            parser.exit(1, f"unforgettable: invalid import data: {exc}\n")
         return 0
 
     if args.command == "clean":

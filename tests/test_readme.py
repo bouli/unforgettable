@@ -14,6 +14,10 @@ def test_readme_documents_local_ai_agent_tool_contract():
     assert "python -m unforgettable --help" in readme
     assert "unforgettable --version" in readme
     assert "Missing cache IDs for `get` exit with status code `1`." in readme
+    assert "Missing cache IDs for `exists` exit with status code `1`." in readme
+    assert "Missing cache IDs for `delete` exit with status code `1`." in readme
+    assert "Missing cache IDs for `info` exit with status code `1`." in readme
+    assert "Import failures exit with status code `1`." in readme
     assert (
         "Invalid usage, such as missing required arguments, exits with status code `2`."
         in readme
@@ -23,7 +27,15 @@ def test_readme_documents_local_ai_agent_tool_contract():
     assert "--create-cache-folder" in readme
     assert "--no-create-cache-folder" in readme
     assert "set notes --stdin" in readme
+    assert "exists notes" in readme
+    assert "delete notes" in readme
+    assert "info notes" in readme
+    assert "export" in readme
+    assert "import --stdin" in readme
     assert "--output json" in readme
+    assert '{"cache_id": "notes", "exists": true}' in readme
+    assert '{"entries": []}' in readme
+    assert '"content_type": "text/plain"' in readme
     assert '{"cache_ids": ["notes"]}' in readme
 
 
@@ -39,5 +51,17 @@ def test_readme_documents_release_verification_checklist():
     assert "unforgettable --help` after installing the built wheel" in readme
     assert "python -m unforgettable --help` after installing the built wheel" in readme
     assert "unforgettable --version` after installing the built wheel" in readme
+    assert "--create-cache-folder set notes" in readme
+    assert "--output json get notes" in readme
+    assert "--output json exists notes" in readme
+    assert "--output json info notes" in readme
+    assert ".release-cache export" in readme
+    assert ".release-cache import --stdin < memory.json" in readme
+    assert ".release-cache delete notes" in readme
     assert "tests/test_packaging.py" in readme
     assert "verifies installed console script, module execution, and version output" in readme
+    assert (
+        "agent memory smoke checks above exercise `set`, structured JSON\n"
+        "`get`, `exists`, `info`, `export`, `import --stdin`, and `delete`"
+        in readme
+    )

@@ -176,6 +176,68 @@ unforgettable --cache-folder .unforgettable-cache get greeting
 Retrieved text is written directly to stdout without labels or added trailing
 newlines, so cached values can be piped into other tools.
 
+With `--output json`, `get` emits a structured object containing the cache ID,
+content, encoding marker, and metadata:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache --output json get greeting
+```
+
+Text values use `encoding: "utf-8"` and place the text directly in `content`.
+Binary values use `encoding: "base64"` and place base64-encoded bytes in
+`content`, so JSON output remains parseable.
+
+Export all cache entries as JSON:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache export
+```
+
+The `export` command writes a JSON object to stdout with an `entries` array.
+Each entry has the same shape as JSON `get`: `cache_id`, `content`, `encoding`,
+and `metadata`. Empty cache folders export as `{"entries": []}`. Text and
+multiline values use `encoding: "utf-8"`; binary values use
+`encoding: "base64"` with base64-encoded content.
+
+Import exported JSON from stdin:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache import --stdin < memory.json
+```
+
+The `import --stdin` command upserts entries by cache ID and preserves unrelated
+entries in the selected cache folder. It exits with status code `1` and writes a
+stderr diagnostic for empty stdin, malformed JSON, or invalid import data.
+
+Check whether a cache ID exists without retrieving content:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache exists greeting
+```
+
+The `exists` command writes `true` or `false` in text mode. It exits with status
+code `0` when the cache ID exists and status code `1` when it is missing.
+
+Delete one cache ID without clearing the whole cache folder:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache delete greeting
+```
+
+The `delete` command exits with status code `0` after removing an entry. It
+exits with status code `1` and writes a diagnostic to stderr when the cache ID
+is missing.
+
+Inspect metadata for a cache ID before retrieving content:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache info greeting
+```
+
+The `info` command prints readable metadata in text mode. With `--output json`,
+it emits `cache_id`, `file_name`, `byte_size`, `content_type`, `created_at`,
+and `updated_at`.
+
 Clean the selected cache folder:
 
 ```shell
@@ -183,6 +245,7 @@ unforgettable --cache-folder .unforgettable-cache clean
 ```
 
 `get` exits with status code `1` when the requested cache ID is missing.
+`info` exits with status code `1` when the requested cache ID is missing.
 
 ## Local AI-Agent Tool Contract
 
@@ -215,6 +278,10 @@ The CLI uses stable process behavior suitable for unattended tools:
 
 - Successful commands exit with status code `0`.
 - Missing cache IDs for `get` exit with status code `1`.
+- Missing cache IDs for `exists` exit with status code `1`.
+- Missing cache IDs for `delete` exit with status code `1`.
+- Missing cache IDs for `info` exit with status code `1`.
+- Import failures exit with status code `1`.
 - Rejected cache-folder creation exits with status code `1`.
 - Invalid usage, such as missing required arguments, exits with status code `2`.
 - Command values are written to stdout.
@@ -248,11 +315,50 @@ without labels or added trailing newlines:
 unforgettable --cache-folder .agent-cache get notes
 ```
 
+Use JSON `get` when an agent needs content and metadata in one parseable
+response:
+
+```shell
+unforgettable --cache-folder .agent-cache --output json get notes
+```
+
+Check for a cache ID without retrieving content:
+
+```shell
+unforgettable --cache-folder .agent-cache exists notes
+```
+
+Text `exists` output is `true` or `false`. The command exits with status code
+`0` when the cache ID exists and status code `1` when it is missing.
+
+Delete one obsolete entry without erasing unrelated memory:
+
+```shell
+unforgettable --cache-folder .agent-cache delete notes
+```
+
+`delete` exits with status code `0` when it removes an entry. It exits with
+status code `1` and writes a stderr diagnostic when the cache ID is missing.
+
+Inspect metadata before retrieving content:
+
+```shell
+unforgettable --cache-folder .agent-cache info notes
+```
+
+`info` exits with status code `0` when metadata is available. It exits with
+status code `1` and writes a stderr diagnostic when the cache ID is missing.
+
 Plain text output is the default. Use `--output json` when a command supports
 structured output:
 
 ```shell
 unforgettable --cache-folder .agent-cache --output json list
+unforgettable --cache-folder .agent-cache --output json get notes
+unforgettable --cache-folder .agent-cache --output json exists notes
+unforgettable --cache-folder .agent-cache --output json info notes
+unforgettable --cache-folder .agent-cache export
+unforgettable --cache-folder .agent-cache import --stdin < memory.json
 ```
 
 The JSON `list` shape is stable:
@@ -260,6 +366,51 @@ The JSON `list` shape is stable:
 ```json
 {"cache_ids": ["notes"]}
 ```
+
+The JSON `exists` shape is stable:
+
+```json
+{"cache_id": "notes", "exists": true}
+```
+
+The JSON `get` shape is stable:
+
+```json
+{"cache_id": "notes", "content": "first line\nsecond line\n", "encoding": "utf-8", "metadata": {"byte_size": 23, "cache_id": "notes", "content_type": "text/plain", "created_at": "2026-06-06T00:00:00+00:00", "file_name": "1.cache", "updated_at": "2026-06-06T00:00:00+00:00"}}
+```
+
+Binary content in JSON `get` output uses base64:
+
+```json
+{"cache_id": "binary", "content": "gIFjYWNoZWQgYnl0ZXM=", "encoding": "base64", "metadata": {"byte_size": 14, "cache_id": "binary", "content_type": "application/octet-stream", "created_at": "2026-06-06T00:00:00+00:00", "file_name": "1.cache", "updated_at": "2026-06-06T00:00:00+00:00"}}
+```
+
+The JSON `export` shape is stable:
+
+```json
+{"entries": [{"cache_id": "notes", "content": "first line\nsecond line\n", "encoding": "utf-8", "metadata": {"byte_size": 23, "cache_id": "notes", "content_type": "text/plain", "created_at": "2026-06-06T00:00:00+00:00", "file_name": "1.cache", "updated_at": "2026-06-06T00:00:00+00:00"}}]}
+```
+
+Empty cache folders export as:
+
+```json
+{"entries": []}
+```
+
+The `import --stdin` command accepts the same JSON shape produced by `export`.
+It upserts matching cache IDs, keeps entries that are not present in the import
+bundle, and rejects malformed or invalid input before changing existing memory
+where practical.
+
+The JSON `info` shape is stable:
+
+```json
+{"byte_size": 12, "cache_id": "notes", "content_type": "text/plain", "created_at": "2026-06-06T00:00:00+00:00", "file_name": "1.cache", "updated_at": "2026-06-06T00:00:00+00:00"}
+```
+
+Existing cache folders that only have the legacy index and content files remain
+readable. When no manifest exists, `info` derives byte size, content type, and
+timestamps from the stored content file.
 
 ## Custom Cache File Extension
 
@@ -349,6 +500,57 @@ Returns the cached value for `cache_id`.
 - Returns `bytes` for binary files.
 - Returns `None` when the cache entry does not exist.
 
+### `cache.get_entry(cache_id)`
+
+Returns a structured cached entry for `cache_id`.
+
+- Returns a `dict` with `cache_id`, `content`, `encoding`, and `metadata`.
+- Uses `encoding == "utf-8"` for text content.
+- Uses `encoding == "base64"` for binary content.
+- Returns `None` when the cache entry does not exist.
+
+### `cache.export()`
+
+Returns all cache entries in a JSON-compatible structure.
+
+- Returns a `dict` with an `entries` list.
+- Each entry has the same `cache_id`, `content`, `encoding`, and `metadata`
+  shape as `cache.get_entry(cache_id)`.
+- Returns `{"entries": []}` when no user cache entries exist.
+- Derives metadata for legacy cache folders that do not have a manifest.
+
+### `cache.import_entries(exported_entries)`
+
+Imports entries from the JSON-compatible structure returned by `cache.export()`.
+
+- Upserts entries by `cache_id`.
+- Preserves unrelated cache entries.
+- Supports `encoding == "utf-8"` text and `encoding == "base64"` binary
+  content.
+- Raises `ValueError` for invalid import data before changing memory where
+  practical.
+
+### `cache.exists(cache_id)`
+
+Returns `True` when `cache_id` has a cached value and `False` when it does not.
+
+### `cache.delete(cache_id)`
+
+Removes the cached value for `cache_id`.
+
+- Returns `True` when an entry was removed.
+- Returns `False` when the cache entry does not exist.
+- Preserves unrelated cache entries.
+
+### `cache.info(cache_id)`
+
+Returns metadata for `cache_id`.
+
+- Returns a `dict` with `cache_id`, `file_name`, `byte_size`, `content_type`,
+  `created_at`, and `updated_at`.
+- Returns `None` when the cache entry does not exist.
+- Derives metadata for legacy cache folders that do not have a manifest.
+
 ### `cache.list()`
 
 Returns a `list[str]` containing user-created cache IDs available in the cache
@@ -398,6 +600,13 @@ the agent-facing execution paths:
 - `uv build --wheel`
 - `uv tool run unforgettable --help`
 - `uv tool run unforgettable --version`
+- `unforgettable --cache-folder .release-cache --create-cache-folder set notes "release check"`
+- `unforgettable --cache-folder .release-cache --output json get notes`
+- `unforgettable --cache-folder .release-cache --output json exists notes`
+- `unforgettable --cache-folder .release-cache --output json info notes`
+- `unforgettable --cache-folder .release-cache export`
+- `unforgettable --cache-folder .release-cache import --stdin < memory.json`
+- `unforgettable --cache-folder .release-cache delete notes`
 - `uvx unforgettable --help` where the `uvx` alias is installed
 - `uvx unforgettable --version` where the `uvx` alias is installed
 - `unforgettable --help` after installing the built wheel
@@ -408,7 +617,9 @@ If `uvx` is not installed, record that it was unavailable and use
 `uv tool run unforgettable --help` and `uv tool run unforgettable --version` as
 the equivalent ephemeral execution checks. The packaging test builds the wheel
 and verifies installed console script, module execution, and version output
-contracts; keep it passing before release.
+contracts. The agent memory smoke checks above exercise `set`, structured JSON
+`get`, `exists`, `info`, `export`, `import --stdin`, and `delete`; keep those
+commands passing before release.
 
 ## See Also
 
