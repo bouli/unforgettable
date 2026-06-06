@@ -53,3 +53,9 @@ filename = "Makefile"
 
 [[tool.bumpversion.files]]
 filename = "src/unforgettable/cli.py"
+
+[[tool.bumpversion.files]]
+filename = "tests/test_packaging.py"
+search = 'unforgettable v{current_version}'
+replace = 'unforgettable v{new_version}'
+
