@@ -105,6 +105,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Export all cached entries as JSON.",
     )
 
+    import_parser = subparsers.add_parser(
+        "import",
+        help="Import exported cache entries as JSON.",
+    )
+    import_parser.add_argument(
+        "--stdin",
+        action="store_true",
+        help="Read exported JSON from stdin.",
+    )
+
     subparsers.add_parser("clean", help="Remove cached values.")
 
     return parser
@@ -208,6 +218,22 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "export":
         print(json.dumps(cache.export()))
+        return 0
+
+    if args.command == "import":
+        if not args.stdin:
+            parser.exit(2, "unforgettable: import requires --stdin\n")
+        import_content = sys.stdin.read()
+        if import_content == "":
+            parser.exit(1, "unforgettable: no stdin content received\n")
+        try:
+            exported_entries = json.loads(import_content)
+        except json.JSONDecodeError as exc:
+            parser.exit(1, f"unforgettable: invalid import JSON: {exc.msg}\n")
+        try:
+            cache.import_entries(exported_entries)
+        except ValueError as exc:
+            parser.exit(1, f"unforgettable: invalid import data: {exc}\n")
         return 0
 
     if args.command == "clean":

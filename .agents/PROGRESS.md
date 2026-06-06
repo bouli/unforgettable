@@ -59,3 +59,14 @@
 - Documented the export command, JSON shape, empty result, API method, and binary representation in the README.
 - Added regression coverage for API export, CLI export, empty exports, multiple entries, multiline text, binary content, legacy cache folders, installed help, and README contract.
 - Verification: `uv run pytest` passed with 79 tests.
+
+## 2026-06-06 - 007 JSON Import
+
+- Added `cache.import_entries(exported_entries)` to import the JSON-compatible structure produced by `cache.export()`.
+- Added `import --stdin` to the CLI, reading exported JSON from stdin and upserting entries by cache ID.
+- Preserved unrelated entries during import and replaced matching cache IDs deterministically.
+- Validated import data before applying writes for normal malformed-input failures, including missing `entries`, invalid entry shapes, unsupported encodings, and invalid base64.
+- Preserved exported `created_at` and `updated_at` metadata while keeping imported entries tied to their actual target content files.
+- Documented import behavior, failure modes, CLI usage, and API usage in the README.
+- Added regression coverage for API import, CLI import, overwrite/upsert behavior, preservation of unrelated entries, empty stdin, malformed JSON, invalid data, text/multiline IDs with punctuation, binary content, installed help, and README contract.
+- Verification: `uv run pytest` passed with 89 tests.

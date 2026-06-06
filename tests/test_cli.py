@@ -49,7 +49,7 @@ def test_local_checkout_module_execution_shows_cli_help():
 
     assert result.returncode == 0
     assert "Inspect and maintain an Unforgettable cache." in result.stdout
-    assert "{list,set,get,exists,delete,info,export,clean}" in result.stdout
+    assert "{list,set,get,exists,delete,info,export,import,clean}" in result.stdout
     assert "--cache-folder" in result.stdout
     assert ".unforgettable-memory" in result.stdout
 
@@ -62,7 +62,7 @@ def test_local_checkout_console_script_shows_cli_help():
 
     assert result.returncode == 0
     assert "Inspect and maintain an Unforgettable cache." in result.stdout
-    assert "{list,set,get,exists,delete,info,export,clean}" in result.stdout
+    assert "{list,set,get,exists,delete,info,export,import,clean}" in result.stdout
     assert "--cache-folder" in result.stdout
     assert ".unforgettable-memory" in result.stdout
 
@@ -719,6 +719,136 @@ def test_cli_export_derives_metadata_for_legacy_cache_folder(tmp_path):
     assert entry["encoding"] == "utf-8"
     assert entry["metadata"]["byte_size"] == len("legacy value".encode())
     assert entry["metadata"]["created_at"] == entry["metadata"]["updated_at"]
+
+
+def test_cli_import_stdin_restores_exported_entries(tmp_path):
+    source_cache = unforgettable(cache_folder=str(tmp_path / "source"))
+    cache_id = "id with spaces: and punctuation?!"
+    multiline = "first line\nsecond line\n"
+    source_cache.set(content=multiline, cache_id=cache_id)
+    source_cache.set(content="second value", cache_id="second")
+    exported = source_cache.export()
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path / "target"),
+        "--create-cache-folder",
+        "import",
+        "--stdin",
+        input=json.dumps(exported),
+    )
+
+    target_cache = unforgettable(cache_folder=str(tmp_path / "target"))
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert target_cache.get(cache_id=cache_id) == multiline
+    assert target_cache.get(cache_id="second") == "second value"
+    assert target_cache.info(cache_id=cache_id)["created_at"] == (
+        exported["entries"][0]["metadata"]["created_at"]
+    )
+
+
+def test_cli_import_upserts_matching_ids_and_preserves_unrelated_entries(tmp_path):
+    source_cache = unforgettable(cache_folder=str(tmp_path / "source"))
+    source_cache.set(content="replacement", cache_id="shared")
+    exported = source_cache.export()
+    target_cache = unforgettable(cache_folder=str(tmp_path / "target"))
+    target_cache.set(content="original", cache_id="shared")
+    target_cache.set(content="keep me", cache_id="unrelated")
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path / "target"),
+        "import",
+        "--stdin",
+        input=json.dumps(exported),
+    )
+
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert target_cache.get(cache_id="shared") == "replacement"
+    assert target_cache.get(cache_id="unrelated") == "keep me"
+
+
+def test_cli_import_round_trips_base64_encoded_binary_content(tmp_path):
+    content = b"\x80\x81cached bytes"
+    source_cache = unforgettable(cache_folder=str(tmp_path / "source"))
+    source_cache.set(content=content, cache_id="binary")
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path / "target"),
+        "--create-cache-folder",
+        "import",
+        "--stdin",
+        input=json.dumps(source_cache.export()),
+    )
+
+    target_cache = unforgettable(cache_folder=str(tmp_path / "target"))
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert target_cache.get(cache_id="binary") == content
+    assert target_cache.info(cache_id="binary")["content_type"] == (
+        "application/octet-stream"
+    )
+
+
+def test_cli_import_malformed_json_exits_one_with_diagnostic(tmp_path):
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "import",
+        "--stdin",
+        input="{not json",
+    )
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr.startswith("unforgettable: invalid import JSON:")
+
+
+def test_cli_import_empty_stdin_exits_one_with_diagnostic(tmp_path):
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "import",
+        "--stdin",
+        input="",
+    )
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr == "unforgettable: no stdin content received\n"
+
+
+def test_cli_import_invalid_data_leaves_existing_memory_unchanged(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="existing", cache_id="keep")
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "import",
+        "--stdin",
+        input=json.dumps({"entries": [{"cache_id": "new", "content": "value"}]}),
+    )
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr.startswith("unforgettable: invalid import data:")
+    assert cache.get(cache_id="keep") == "existing"
+    assert cache.exists(cache_id="new") is False
+
+
+def test_cli_import_requires_stdin_flag(tmp_path):
+    result = run_cli("--cache-folder", str(tmp_path), "import")
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == "unforgettable: import requires --stdin\n"
 
 
 def test_cli_clean_removes_entries_from_selected_cache_folder(tmp_path):

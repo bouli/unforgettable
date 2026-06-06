@@ -199,6 +199,16 @@ and `metadata`. Empty cache folders export as `{"entries": []}`. Text and
 multiline values use `encoding: "utf-8"`; binary values use
 `encoding: "base64"` with base64-encoded content.
 
+Import exported JSON from stdin:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache import --stdin < memory.json
+```
+
+The `import --stdin` command upserts entries by cache ID and preserves unrelated
+entries in the selected cache folder. It exits with status code `1` and writes a
+stderr diagnostic for empty stdin, malformed JSON, or invalid import data.
+
 Check whether a cache ID exists without retrieving content:
 
 ```shell
@@ -271,6 +281,7 @@ The CLI uses stable process behavior suitable for unattended tools:
 - Missing cache IDs for `exists` exit with status code `1`.
 - Missing cache IDs for `delete` exit with status code `1`.
 - Missing cache IDs for `info` exit with status code `1`.
+- Import failures exit with status code `1`.
 - Rejected cache-folder creation exits with status code `1`.
 - Invalid usage, such as missing required arguments, exits with status code `2`.
 - Command values are written to stdout.
@@ -347,6 +358,7 @@ unforgettable --cache-folder .agent-cache --output json get notes
 unforgettable --cache-folder .agent-cache --output json exists notes
 unforgettable --cache-folder .agent-cache --output json info notes
 unforgettable --cache-folder .agent-cache export
+unforgettable --cache-folder .agent-cache import --stdin < memory.json
 ```
 
 The JSON `list` shape is stable:
@@ -384,6 +396,11 @@ Empty cache folders export as:
 ```json
 {"entries": []}
 ```
+
+The `import --stdin` command accepts the same JSON shape produced by `export`.
+It upserts matching cache IDs, keeps entries that are not present in the import
+bundle, and rejects malformed or invalid input before changing existing memory
+where practical.
 
 The JSON `info` shape is stable:
 
@@ -501,6 +518,17 @@ Returns all cache entries in a JSON-compatible structure.
   shape as `cache.get_entry(cache_id)`.
 - Returns `{"entries": []}` when no user cache entries exist.
 - Derives metadata for legacy cache folders that do not have a manifest.
+
+### `cache.import_entries(exported_entries)`
+
+Imports entries from the JSON-compatible structure returned by `cache.export()`.
+
+- Upserts entries by `cache_id`.
+- Preserves unrelated cache entries.
+- Supports `encoding == "utf-8"` text and `encoding == "base64"` binary
+  content.
+- Raises `ValueError` for invalid import data before changing memory where
+  practical.
 
 ### `cache.exists(cache_id)`
 

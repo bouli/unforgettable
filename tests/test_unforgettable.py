@@ -130,6 +130,62 @@ def test_export_derives_metadata_for_legacy_cache_folder_without_manifest(tmp_pa
     assert entry["metadata"]["created_at"] == entry["metadata"]["updated_at"]
 
 
+def test_import_entries_restores_exported_text_multiline_and_binary_content(tmp_path):
+    source_cache = unforgettable(cache_folder=str(tmp_path / "source"))
+    multiline = "first line\nsecond line\n"
+    binary = b"\x80\x81cached bytes"
+    cache_id = "id with spaces: and punctuation?!"
+    source_cache.set(content=multiline, cache_id=cache_id)
+    source_cache.set(content=binary, cache_id="binary")
+    exported = source_cache.export()
+
+    target_cache = unforgettable(cache_folder=str(tmp_path / "target"))
+    result = target_cache.import_entries(exported)
+
+    assert result == {"imported": 2}
+    assert target_cache.get(cache_id=cache_id) == multiline
+    assert target_cache.get(cache_id="binary") == binary
+    assert target_cache.info(cache_id=cache_id)["created_at"] == (
+        exported["entries"][0]["metadata"]["created_at"]
+    )
+    assert target_cache.info(cache_id="binary")["updated_at"] == (
+        exported["entries"][1]["metadata"]["updated_at"]
+    )
+
+
+def test_import_entries_upserts_matching_ids_and_preserves_unrelated_entries(tmp_path):
+    source_cache = unforgettable(cache_folder=str(tmp_path / "source"))
+    source_cache.set(content="replacement", cache_id="shared")
+    exported = source_cache.export()
+
+    target_cache = unforgettable(cache_folder=str(tmp_path / "target"))
+    target_cache.set(content="original", cache_id="shared")
+    target_cache.set(content="keep me", cache_id="unrelated")
+
+    target_cache.import_entries(exported)
+
+    assert target_cache.get(cache_id="shared") == "replacement"
+    assert target_cache.get(cache_id="unrelated") == "keep me"
+    assert target_cache.list() == ["shared", "unrelated"]
+
+
+def test_import_entries_rejects_invalid_data_without_changing_existing_entries(
+    tmp_path,
+):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="existing", cache_id="keep")
+
+    try:
+        cache.import_entries({"entries": [{"cache_id": "new", "content": "value"}]})
+    except ValueError as exc:
+        assert "encoding" in str(exc)
+    else:
+        raise AssertionError("invalid import data should raise ValueError")
+
+    assert cache.get(cache_id="keep") == "existing"
+    assert cache.exists(cache_id="new") is False
+
+
 def test_overwrites_existing_cache_entry(tmp_path):
     cache = unforgettable(cache_folder=str(tmp_path))
 

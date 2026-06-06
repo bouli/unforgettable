@@ -17,6 +17,7 @@ def test_readme_documents_local_ai_agent_tool_contract():
     assert "Missing cache IDs for `exists` exit with status code `1`." in readme
     assert "Missing cache IDs for `delete` exit with status code `1`." in readme
     assert "Missing cache IDs for `info` exit with status code `1`." in readme
+    assert "Import failures exit with status code `1`." in readme
     assert (
         "Invalid usage, such as missing required arguments, exits with status code `2`."
         in readme
@@ -30,6 +31,7 @@ def test_readme_documents_local_ai_agent_tool_contract():
     assert "delete notes" in readme
     assert "info notes" in readme
     assert "export" in readme
+    assert "import --stdin" in readme
     assert "--output json" in readme
     assert '{"cache_id": "notes", "exists": true}' in readme
     assert '{"entries": []}' in readme

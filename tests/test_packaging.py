@@ -57,13 +57,13 @@ def test_built_wheel_supports_installed_execution_paths(tmp_path):
     script_help = run_process([str(unforgettable), "--help"])
     assert_success(script_help)
     assert "Inspect and maintain an Unforgettable cache." in script_help.stdout
-    assert "{list,set,get,exists,delete,info,export,clean}" in script_help.stdout
+    assert "{list,set,get,exists,delete,info,export,import,clean}" in script_help.stdout
     assert "--cache-folder" in script_help.stdout
 
     module_help = run_process([str(python), "-m", "unforgettable", "--help"])
     assert_success(module_help)
     assert "Inspect and maintain an Unforgettable cache." in module_help.stdout
-    assert "{list,set,get,exists,delete,info,export,clean}" in module_help.stdout
+    assert "{list,set,get,exists,delete,info,export,import,clean}" in module_help.stdout
     assert "--cache-folder" in module_help.stdout
 
     version_result = run_process([str(unforgettable), "--version"])

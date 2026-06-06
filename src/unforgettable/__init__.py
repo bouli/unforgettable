@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from base64 import b64encode
+from base64 import b64decode, b64encode
+from binascii import Error as BinasciiError
 from datetime import UTC, datetime
 
 
@@ -102,6 +103,18 @@ class unforgettable:
                 entries.append(entry)
 
         return {"entries": entries}
+
+    def import_entries(self, exported_entries: dict) -> dict:
+        entries = self._validate_import_entries(exported_entries)
+        for entry in entries:
+            self.set(content=entry["content"], cache_id=entry["cache_id"])
+            if entry["metadata"] is not None:
+                self._record_imported_manifest_entry(
+                    cache_id=entry["cache_id"],
+                    metadata=entry["metadata"],
+                )
+
+        return {"imported": len(entries)}
 
     @safe_cache_id
     def exists(self, cache_id: str) -> bool:
@@ -313,6 +326,64 @@ class unforgettable:
             "updated_at": now,
         }
         self._write_manifest(manifest)
+
+    def _record_imported_manifest_entry(self, cache_id: str, metadata: dict):
+        current_metadata = self.info(cache_id=cache_id)
+        if current_metadata is None:
+            return
+
+        manifest = self._read_manifest()
+        entry = dict(current_metadata)
+        for key in ("created_at", "updated_at"):
+            if key in metadata:
+                entry[key] = metadata[key]
+        manifest["entries"][cache_id] = entry
+        self._write_manifest(manifest)
+
+    def _validate_import_entries(self, exported_entries: dict) -> list[dict]:
+        if not isinstance(exported_entries, dict):
+            raise ValueError("import JSON must be an object")
+        entries = exported_entries.get("entries")
+        if not isinstance(entries, list):
+            raise ValueError("import JSON must contain an entries list")
+
+        validated_entries = []
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                raise ValueError(f"entry {index} must be an object")
+
+            cache_id = entry.get("cache_id")
+            content = entry.get("content")
+            encoding = entry.get("encoding")
+            metadata = entry.get("metadata")
+            if not isinstance(cache_id, str):
+                raise ValueError(f"entry {index} cache_id must be a string")
+            if not isinstance(content, str):
+                raise ValueError(f"entry {index} content must be a string")
+            if metadata is not None and not isinstance(metadata, dict):
+                raise ValueError(f"entry {index} metadata must be an object")
+
+            if encoding == "utf-8":
+                decoded_content = content
+            elif encoding == "base64":
+                try:
+                    decoded_content = b64decode(content, validate=True)
+                except BinasciiError as exc:
+                    raise ValueError(f"entry {index} content is invalid base64") from exc
+            else:
+                raise ValueError(
+                    f"entry {index} encoding must be utf-8 or base64"
+                )
+
+            validated_entries.append(
+                {
+                    "cache_id": cache_id,
+                    "content": decoded_content,
+                    "metadata": metadata,
+                }
+            )
+
+        return validated_entries
 
     def _unsafe_cache_id(self, cache_id: str) -> str:
         if cache_id.startswith('"') and cache_id.endswith('"'):
