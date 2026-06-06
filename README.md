@@ -145,6 +145,16 @@ to stderr; command values are written to stdout.
 The `list` command prints one cache ID per line and prints nothing when the
 selected cache folder has no user-created entries.
 
+Use `--output json` when an agent or script needs structured output:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache --output json list
+```
+
+JSON `list` output has the stable shape `{"cache_ids": ["example"]}` and uses
+`{"cache_ids": []}` for an empty cache folder. Cache IDs with spaces and
+punctuation are preserved as JSON strings. Plain text remains the default.
+
 Store text under a cache ID:
 
 ```shell

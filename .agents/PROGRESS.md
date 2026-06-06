@@ -45,3 +45,9 @@
   - Changed CLI `get` to write stored content directly to stdout without adding labels or extra trailing newlines.
   - Documented stdin storage and direct stdout retrieval behavior in `README.md`.
   - Covered multiline stdin storage, exact retrieval, punctuation-containing cache IDs, and invalid stdin usage with subprocess tests.
+- `.agents/issues/009-add-machine-readable-output-mode.md`
+  - Added a global `--output text|json` CLI option, with plain text as the default.
+  - Added JSON `list` output using the stable shape `{"cache_ids": [...]}`.
+  - Preserved cache IDs with spaces and punctuation through JSON strings.
+  - Documented the output mode contract in `README.md` and CLI help.
+  - Covered populated and empty JSON list output with tests that parse JSON.

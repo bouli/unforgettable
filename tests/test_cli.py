@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 import shutil
@@ -73,6 +74,8 @@ def test_cli_help_describes_list_command():
     assert "--cache-folder" in result.stdout
     assert "--create-cache-folder" in result.stdout
     assert "--no-create-cache-folder" in result.stdout
+    assert "--output" in result.stdout
+    assert "{text,json}" in result.stdout
     assert ".unforgettable-memory" in result.stdout
 
 
@@ -97,6 +100,28 @@ def test_cli_list_handles_empty_cache_folder(tmp_path):
     assert result.returncode == 0
     assert result.stderr == ""
     assert result.stdout == ""
+
+
+def test_cli_list_json_outputs_cache_ids_as_structured_data(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="first", cache_id="alpha")
+    cache.set(content="second", cache_id="id with spaces: and punctuation?!")
+
+    result = run_cli("--cache-folder", str(tmp_path), "--output", "json", "list")
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert json.loads(result.stdout) == {
+        "cache_ids": ["alpha", "id with spaces: and punctuation?!"]
+    }
+
+
+def test_cli_list_json_handles_empty_cache_folder(tmp_path):
+    result = run_cli("--cache-folder", str(tmp_path), "--output", "json", "list")
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert json.loads(result.stdout) == {"cache_ids": []}
 
 
 def test_cli_set_stores_text_content_in_selected_cache_folder(tmp_path):

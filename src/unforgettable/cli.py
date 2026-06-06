@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import sys
 from collections.abc import Sequence
@@ -30,6 +31,15 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--version", action="version", version="%(prog)s v0.2.0")
+    parser.add_argument(
+        "--output",
+        choices=("text", "json"),
+        default="text",
+        help=(
+            "Output format for command results. Use json for structured "
+            "machine-readable output."
+        ),
+    )
     parser.add_argument(
         "--cache-folder",
         default=None,
@@ -100,8 +110,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     cache = unforgettable(cache_folder=cache_folder)
 
     if args.command == "list":
-        for cache_id in cache.list():
-            print(cache_id)
+        cache_ids = cache.list()
+        if args.output == "json":
+            print(json.dumps({"cache_ids": cache_ids}))
+        else:
+            for cache_id in cache_ids:
+                print(cache_id)
         return 0
 
     if args.command == "set":
