@@ -94,6 +94,15 @@ class unforgettable:
             "metadata": self.info(cache_id=cache_id),
         }
 
+    def export(self) -> dict:
+        entries = []
+        for cache_id in self.list():
+            entry = self.get_entry(cache_id=cache_id)
+            if entry is not None:
+                entries.append(entry)
+
+        return {"entries": entries}
+
     @safe_cache_id
     def exists(self, cache_id: str) -> bool:
         cached_file_index = self.get_index_from_file_index(_safe_cache_id=cache_id)

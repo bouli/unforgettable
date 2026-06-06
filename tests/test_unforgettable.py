@@ -82,6 +82,54 @@ def test_get_entry_returns_none_for_missing_cache_id(tmp_path):
     assert cache.get_entry(cache_id="missing") is None
 
 
+def test_export_returns_empty_entries_for_empty_cache_folder(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+
+    assert cache.export() == {"entries": []}
+
+
+def test_export_returns_structured_entries_in_list_order(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    multiline = "first line\nsecond line\n"
+    binary = b"\x80\x81cached bytes"
+    punctuated_cache_id = "id with spaces: and punctuation?!"
+
+    cache.set(content=multiline, cache_id=punctuated_cache_id)
+    cache.set(content=binary, cache_id="binary")
+
+    exported = cache.export()
+
+    assert [entry["cache_id"] for entry in exported["entries"]] == [
+        punctuated_cache_id,
+        "binary",
+    ]
+    assert exported["entries"][0]["content"] == multiline
+    assert exported["entries"][0]["encoding"] == "utf-8"
+    assert exported["entries"][0]["metadata"]["content_type"] == "text/plain"
+    assert exported["entries"][1]["content"] == b64encode(binary).decode("ascii")
+    assert exported["entries"][1]["encoding"] == "base64"
+    assert exported["entries"][1]["metadata"]["content_type"] == (
+        "application/octet-stream"
+    )
+
+
+def test_export_derives_metadata_for_legacy_cache_folder_without_manifest(tmp_path):
+    (tmp_path / "cache_index.yaml").write_text('0: cache_index.yaml\n1: "legacy"')
+    (tmp_path / "1.cache").write_text("legacy value")
+    cache = unforgettable(cache_folder=str(tmp_path))
+
+    exported = cache.export()
+
+    assert len(exported["entries"]) == 1
+    entry = exported["entries"][0]
+    assert entry["cache_id"] == "legacy"
+    assert entry["content"] == "legacy value"
+    assert entry["encoding"] == "utf-8"
+    assert entry["metadata"]["cache_id"] == "legacy"
+    assert entry["metadata"]["byte_size"] == len("legacy value".encode())
+    assert entry["metadata"]["created_at"] == entry["metadata"]["updated_at"]
+
+
 def test_overwrites_existing_cache_entry(tmp_path):
     cache = unforgettable(cache_folder=str(tmp_path))
 

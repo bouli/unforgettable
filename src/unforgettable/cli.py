@@ -100,6 +100,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     info_parser.add_argument("cache_id", help="Cache ID to inspect.")
 
+    subparsers.add_parser(
+        "export",
+        help="Export all cached entries as JSON.",
+    )
+
     subparsers.add_parser("clean", help="Remove cached values.")
 
     return parser
@@ -199,6 +204,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "updated_at",
             ):
                 print(f"{key}: {metadata[key]}")
+        return 0
+
+    if args.command == "export":
+        print(json.dumps(cache.export()))
         return 0
 
     if args.command == "clean":

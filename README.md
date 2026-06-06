@@ -187,6 +187,18 @@ Text values use `encoding: "utf-8"` and place the text directly in `content`.
 Binary values use `encoding: "base64"` and place base64-encoded bytes in
 `content`, so JSON output remains parseable.
 
+Export all cache entries as JSON:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache export
+```
+
+The `export` command writes a JSON object to stdout with an `entries` array.
+Each entry has the same shape as JSON `get`: `cache_id`, `content`, `encoding`,
+and `metadata`. Empty cache folders export as `{"entries": []}`. Text and
+multiline values use `encoding: "utf-8"`; binary values use
+`encoding: "base64"` with base64-encoded content.
+
 Check whether a cache ID exists without retrieving content:
 
 ```shell
@@ -334,6 +346,7 @@ unforgettable --cache-folder .agent-cache --output json list
 unforgettable --cache-folder .agent-cache --output json get notes
 unforgettable --cache-folder .agent-cache --output json exists notes
 unforgettable --cache-folder .agent-cache --output json info notes
+unforgettable --cache-folder .agent-cache export
 ```
 
 The JSON `list` shape is stable:
@@ -358,6 +371,18 @@ Binary content in JSON `get` output uses base64:
 
 ```json
 {"cache_id": "binary", "content": "gIFjYWNoZWQgYnl0ZXM=", "encoding": "base64", "metadata": {"byte_size": 14, "cache_id": "binary", "content_type": "application/octet-stream", "created_at": "2026-06-06T00:00:00+00:00", "file_name": "1.cache", "updated_at": "2026-06-06T00:00:00+00:00"}}
+```
+
+The JSON `export` shape is stable:
+
+```json
+{"entries": [{"cache_id": "notes", "content": "first line\nsecond line\n", "encoding": "utf-8", "metadata": {"byte_size": 23, "cache_id": "notes", "content_type": "text/plain", "created_at": "2026-06-06T00:00:00+00:00", "file_name": "1.cache", "updated_at": "2026-06-06T00:00:00+00:00"}}]}
+```
+
+Empty cache folders export as:
+
+```json
+{"entries": []}
 ```
 
 The JSON `info` shape is stable:
@@ -466,6 +491,16 @@ Returns a structured cached entry for `cache_id`.
 - Uses `encoding == "utf-8"` for text content.
 - Uses `encoding == "base64"` for binary content.
 - Returns `None` when the cache entry does not exist.
+
+### `cache.export()`
+
+Returns all cache entries in a JSON-compatible structure.
+
+- Returns a `dict` with an `entries` list.
+- Each entry has the same `cache_id`, `content`, `encoding`, and `metadata`
+  shape as `cache.get_entry(cache_id)`.
+- Returns `{"entries": []}` when no user cache entries exist.
+- Derives metadata for legacy cache folders that do not have a manifest.
 
 ### `cache.exists(cache_id)`
 

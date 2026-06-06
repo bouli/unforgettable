@@ -29,8 +29,10 @@ def test_readme_documents_local_ai_agent_tool_contract():
     assert "exists notes" in readme
     assert "delete notes" in readme
     assert "info notes" in readme
+    assert "export" in readme
     assert "--output json" in readme
     assert '{"cache_id": "notes", "exists": true}' in readme
+    assert '{"entries": []}' in readme
     assert '"content_type": "text/plain"' in readme
     assert '{"cache_ids": ["notes"]}' in readme
 

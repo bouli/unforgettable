@@ -48,3 +48,14 @@
 - Documented structured `get`, the JSON shape, the new API method, and binary base64 representation in the README.
 - Added regression coverage for raw text output, JSON text, JSON multiline content, JSON binary content, missing entries, cache IDs with spaces and punctuation, and API structured retrieval.
 - Verification: `uv run pytest` passed with 72 tests.
+
+## 2026-06-06 - 006 JSON Export
+
+- Added `cache.export()` to return all cache entries as a JSON-compatible `{"entries": [...]}` structure.
+- Added `export` to the CLI, emitting valid JSON to stdout for the selected cache folder.
+- Export entries reuse the structured `get` shape: cache ID, content, encoding marker, and metadata.
+- Empty cache folders export as `{"entries": []}`.
+- Preserved text, multiline text, cache IDs with spaces and punctuation, binary base64 content, and legacy cache folder metadata derivation.
+- Documented the export command, JSON shape, empty result, API method, and binary representation in the README.
+- Added regression coverage for API export, CLI export, empty exports, multiple entries, multiline text, binary content, legacy cache folders, installed help, and README contract.
+- Verification: `uv run pytest` passed with 79 tests.

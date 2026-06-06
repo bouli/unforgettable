@@ -49,7 +49,7 @@ def test_local_checkout_module_execution_shows_cli_help():
 
     assert result.returncode == 0
     assert "Inspect and maintain an Unforgettable cache." in result.stdout
-    assert "{list,set,get,exists,delete,info,clean}" in result.stdout
+    assert "{list,set,get,exists,delete,info,export,clean}" in result.stdout
     assert "--cache-folder" in result.stdout
     assert ".unforgettable-memory" in result.stdout
 
@@ -62,7 +62,7 @@ def test_local_checkout_console_script_shows_cli_help():
 
     assert result.returncode == 0
     assert "Inspect and maintain an Unforgettable cache." in result.stdout
-    assert "{list,set,get,exists,delete,info,clean}" in result.stdout
+    assert "{list,set,get,exists,delete,info,export,clean}" in result.stdout
     assert "--cache-folder" in result.stdout
     assert ".unforgettable-memory" in result.stdout
 
@@ -651,6 +651,74 @@ def test_cli_info_derives_metadata_for_legacy_cache_folder(tmp_path):
     assert metadata["byte_size"] == len("legacy value".encode())
     assert metadata["content_type"] == "text/plain"
     assert metadata["created_at"] == metadata["updated_at"]
+
+
+def test_cli_export_outputs_empty_entries_for_empty_cache_folder(tmp_path):
+    result = run_cli("--cache-folder", str(tmp_path), "export")
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert json.loads(result.stdout) == {"entries": []}
+
+
+def test_cli_export_outputs_multiple_structured_entries(tmp_path):
+    cache_id = "id with spaces: and punctuation?!"
+    multiline = "first line\nsecond line\n"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content=multiline, cache_id=cache_id)
+    cache.set(content="second value", cache_id="second")
+
+    result = run_cli("--cache-folder", str(tmp_path), "export")
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    exported = json.loads(result.stdout)
+    assert [entry["cache_id"] for entry in exported["entries"]] == [
+        cache_id,
+        "second",
+    ]
+    assert exported["entries"][0]["content"] == multiline
+    assert exported["entries"][0]["encoding"] == "utf-8"
+    assert exported["entries"][0]["metadata"]["cache_id"] == cache_id
+    assert exported["entries"][0]["metadata"]["byte_size"] == len(multiline.encode())
+    assert exported["entries"][1]["content"] == "second value"
+    assert exported["entries"][1]["encoding"] == "utf-8"
+
+
+def test_cli_export_outputs_base64_encoded_binary_content(tmp_path):
+    content = b"\x80\x81cached bytes"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content=content, cache_id="binary")
+
+    result = run_cli("--cache-folder", str(tmp_path), "export")
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    exported = json.loads(result.stdout)
+    entry = exported["entries"][0]
+    assert entry["cache_id"] == "binary"
+    assert entry["content"] == b64encode(content).decode("ascii")
+    assert entry["encoding"] == "base64"
+    assert entry["metadata"]["content_type"] == "application/octet-stream"
+    assert entry["metadata"]["byte_size"] == len(content)
+
+
+def test_cli_export_derives_metadata_for_legacy_cache_folder(tmp_path):
+    (tmp_path / "cache_index.yaml").write_text('0: cache_index.yaml\n1: "legacy"')
+    (tmp_path / "1.cache").write_text("legacy value")
+
+    result = run_cli("--cache-folder", str(tmp_path), "export")
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    exported = json.loads(result.stdout)
+    assert len(exported["entries"]) == 1
+    entry = exported["entries"][0]
+    assert entry["cache_id"] == "legacy"
+    assert entry["content"] == "legacy value"
+    assert entry["encoding"] == "utf-8"
+    assert entry["metadata"]["byte_size"] == len("legacy value".encode())
+    assert entry["metadata"]["created_at"] == entry["metadata"]["updated_at"]
 
 
 def test_cli_clean_removes_entries_from_selected_cache_folder(tmp_path):
