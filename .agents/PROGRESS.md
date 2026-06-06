@@ -66,3 +66,6 @@
   - Documented `uv tool run` and conditional `uvx` ephemeral execution checks, including what to record when `uvx` is unavailable.
   - Included installed CLI, module execution, version output, and built-wheel packaging test checks before release.
   - Added README coverage for the release checklist content.
+- `.agents/issues/006-fix-local-checkout-execution.md`
+  - Re-verified local checkout module and console-script execution with `uv run`.
+  - Reconciled the issue checklist with the completed implementation and passing subprocess tests.
