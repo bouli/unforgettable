@@ -1,5 +1,10 @@
+import json
+import os
+import time
+from datetime import datetime
 from pathlib import Path
 
+import unforgettable as unforgettable_module
 from unforgettable import unforgettable
 
 
@@ -103,3 +108,102 @@ def test_clean_removes_cache_files_from_configured_folder(tmp_path):
     cache.clean()
 
     assert list(tmp_path.iterdir()) == []
+
+
+def test_set_records_manifest_metadata_for_new_entries(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+
+    cache.set(content="cached value", cache_id="example")
+
+    manifest = json.loads((tmp_path / "cache_manifest.json").read_text())
+    entry = manifest["entries"]["example"]
+    assert entry["cache_id"] == "example"
+    assert entry["file_name"] == "1.cache"
+    assert entry["byte_size"] == len("cached value".encode())
+    assert entry["content_type"] == "text/plain"
+    assert datetime.fromisoformat(entry["created_at"])
+    assert datetime.fromisoformat(entry["updated_at"])
+
+
+def test_set_records_binary_content_type_and_byte_size(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    content = b"\x80\x81cached bytes"
+
+    cache.set(content=content, cache_id="binary")
+
+    manifest = json.loads((tmp_path / "cache_manifest.json").read_text())
+    entry = manifest["entries"]["binary"]
+    assert entry["byte_size"] == len(content)
+    assert entry["content_type"] == "application/octet-stream"
+
+
+def test_overwriting_existing_entry_preserves_created_time_and_updates_updated_time(
+    tmp_path,
+):
+    cache = unforgettable(cache_folder=str(tmp_path))
+
+    cache.set(content="first value", cache_id="repeat")
+    original_entry = json.loads((tmp_path / "cache_manifest.json").read_text())[
+        "entries"
+    ]["repeat"]
+    time.sleep(0.001)
+    cache.set(content="second value", cache_id="repeat")
+
+    updated_entry = json.loads((tmp_path / "cache_manifest.json").read_text())[
+        "entries"
+    ]["repeat"]
+    assert updated_entry["created_at"] == original_entry["created_at"]
+    assert updated_entry["updated_at"] > original_entry["updated_at"]
+    assert updated_entry["byte_size"] == len("second value".encode())
+    assert cache.get(cache_id="repeat") == "second value"
+
+
+def test_legacy_cache_folder_without_manifest_remains_readable_and_updatable(tmp_path):
+    (tmp_path / "cache_index.yaml").write_text('0: cache_index.yaml\n1: "legacy"')
+    (tmp_path / "1.cache").write_text("legacy value")
+    cache = unforgettable(cache_folder=str(tmp_path))
+
+    assert cache.get(cache_id="legacy") == "legacy value"
+    assert cache.list() == ["legacy"]
+
+    cache.set(content="modern value", cache_id="modern")
+
+    assert cache.get(cache_id="legacy") == "legacy value"
+    assert cache.get(cache_id="modern") == "modern value"
+    assert cache.list() == ["legacy", "modern"]
+    manifest = json.loads((tmp_path / "cache_manifest.json").read_text())
+    assert manifest["entries"]["modern"]["file_name"] == "2.cache"
+
+
+def test_clean_removes_manifest_index_and_content_files(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="cached", cache_id="to-clean")
+
+    assert (tmp_path / "cache_index.yaml").exists()
+    assert (tmp_path / "cache_manifest.json").exists()
+    assert (tmp_path / "1.cache").exists()
+
+    cache.clean()
+
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_set_uses_atomic_replacement_for_index_content_and_manifest_writes(
+    tmp_path,
+    monkeypatch,
+):
+    original_replace = os.replace
+    replaced_paths = []
+
+    def recording_replace(source, destination):
+        replaced_paths.append(Path(destination).name)
+        original_replace(source, destination)
+
+    monkeypatch.setattr(unforgettable_module.os, "replace", recording_replace)
+    cache = unforgettable(cache_folder=str(tmp_path))
+
+    cache.set(content="cached", cache_id="atomic")
+
+    assert "cache_index.yaml" in replaced_paths
+    assert "1.cache" in replaced_paths
+    assert "cache_manifest.json" in replaced_paths
