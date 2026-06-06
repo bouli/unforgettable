@@ -71,6 +71,8 @@ def test_cli_help_describes_list_command():
     assert result.returncode == 0
     assert "list" in result.stdout
     assert "--cache-folder" in result.stdout
+    assert "--create-cache-folder" in result.stdout
+    assert "--no-create-cache-folder" in result.stdout
     assert ".unforgettable-memory" in result.stdout
 
 
@@ -165,6 +167,50 @@ def test_cli_prompts_before_creating_missing_explicit_cache_folder(tmp_path):
     assert unforgettable(cache_folder=str(explicit_cache_folder)).get(
         cache_id="script-key"
     ) == "stored explicitly"
+
+
+def test_cli_create_cache_folder_creates_missing_explicit_folder_without_prompt(
+    tmp_path,
+):
+    explicit_cache_folder = tmp_path / "new-cache"
+
+    result = run_cli(
+        "--cache-folder",
+        str(explicit_cache_folder),
+        "--create-cache-folder",
+        "set",
+        "script-key",
+        "stored explicitly",
+        input="",
+    )
+
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert unforgettable(cache_folder=str(explicit_cache_folder)).get(
+        cache_id="script-key"
+    ) == "stored explicitly"
+
+
+def test_cli_no_create_cache_folder_rejects_missing_explicit_folder_without_prompt(
+    tmp_path,
+):
+    explicit_cache_folder = tmp_path / "new-cache"
+
+    result = run_cli(
+        "--cache-folder",
+        str(explicit_cache_folder),
+        "--no-create-cache-folder",
+        "set",
+        "script-key",
+        "stored explicitly",
+        input="yes\n",
+    )
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr == "unforgettable: cache folder does not exist\n"
+    assert not explicit_cache_folder.exists()
 
 
 def test_cli_declining_missing_explicit_cache_folder_does_not_create_it(tmp_path):

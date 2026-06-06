@@ -130,6 +130,18 @@ When an explicitly selected cache folder does not exist, the CLI asks before
 creating it. Answer `y` or `yes` to create the folder and continue; any other
 answer exits without creating the folder or changing cache contents.
 
+For unattended automation, choose the missing-folder policy explicitly:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache --create-cache-folder set greeting "hello"
+unforgettable --cache-folder .unforgettable-cache --no-create-cache-folder list
+```
+
+`--create-cache-folder` creates a missing explicitly selected folder without
+reading stdin. `--no-create-cache-folder` exits with status code `1` without
+creating the folder or changing cache contents. Prompts and errors are written
+to stderr; command values are written to stdout.
+
 The `list` command prints one cache ID per line and prints nothing when the
 selected cache folder has no user-created entries.
 

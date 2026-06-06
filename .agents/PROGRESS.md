@@ -33,3 +33,9 @@
   - Added explicit setuptools build metadata and src-package discovery so `uv run` installs the local checkout as an editable package.
   - Verified `uv run python -m unforgettable --help` and `uv run unforgettable --help` work from the repository.
   - Covered both local checkout execution paths with subprocess tests that remove `PYTHONPATH`.
+- `.agents/issues/007-add-noninteractive-cache-folder-policy.md`
+  - Added `--create-cache-folder` for unattended creation of missing explicitly selected cache folders.
+  - Added `--no-create-cache-folder` for unattended rejection of missing explicitly selected cache folders.
+  - Preserved the existing interactive prompt workflow and default `.unforgettable-memory` auto-creation.
+  - Documented stdout/stderr behavior and noninteractive folder policy in `README.md`.
+  - Covered noninteractive create, noninteractive reject, prompt, default-folder, and help behavior with subprocess tests.
