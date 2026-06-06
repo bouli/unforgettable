@@ -176,6 +176,17 @@ unforgettable --cache-folder .unforgettable-cache get greeting
 Retrieved text is written directly to stdout without labels or added trailing
 newlines, so cached values can be piped into other tools.
 
+With `--output json`, `get` emits a structured object containing the cache ID,
+content, encoding marker, and metadata:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache --output json get greeting
+```
+
+Text values use `encoding: "utf-8"` and place the text directly in `content`.
+Binary values use `encoding: "base64"` and place base64-encoded bytes in
+`content`, so JSON output remains parseable.
+
 Check whether a cache ID exists without retrieving content:
 
 ```shell
@@ -281,6 +292,13 @@ without labels or added trailing newlines:
 unforgettable --cache-folder .agent-cache get notes
 ```
 
+Use JSON `get` when an agent needs content and metadata in one parseable
+response:
+
+```shell
+unforgettable --cache-folder .agent-cache --output json get notes
+```
+
 Check for a cache ID without retrieving content:
 
 ```shell
@@ -313,6 +331,7 @@ structured output:
 
 ```shell
 unforgettable --cache-folder .agent-cache --output json list
+unforgettable --cache-folder .agent-cache --output json get notes
 unforgettable --cache-folder .agent-cache --output json exists notes
 unforgettable --cache-folder .agent-cache --output json info notes
 ```
@@ -327,6 +346,18 @@ The JSON `exists` shape is stable:
 
 ```json
 {"cache_id": "notes", "exists": true}
+```
+
+The JSON `get` shape is stable:
+
+```json
+{"cache_id": "notes", "content": "first line\nsecond line\n", "encoding": "utf-8", "metadata": {"byte_size": 23, "cache_id": "notes", "content_type": "text/plain", "created_at": "2026-06-06T00:00:00+00:00", "file_name": "1.cache", "updated_at": "2026-06-06T00:00:00+00:00"}}
+```
+
+Binary content in JSON `get` output uses base64:
+
+```json
+{"cache_id": "binary", "content": "gIFjYWNoZWQgYnl0ZXM=", "encoding": "base64", "metadata": {"byte_size": 14, "cache_id": "binary", "content_type": "application/octet-stream", "created_at": "2026-06-06T00:00:00+00:00", "file_name": "1.cache", "updated_at": "2026-06-06T00:00:00+00:00"}}
 ```
 
 The JSON `info` shape is stable:
@@ -425,6 +456,15 @@ Returns the cached value for `cache_id`.
 
 - Returns `str` for text files.
 - Returns `bytes` for binary files.
+- Returns `None` when the cache entry does not exist.
+
+### `cache.get_entry(cache_id)`
+
+Returns a structured cached entry for `cache_id`.
+
+- Returns a `dict` with `cache_id`, `content`, `encoding`, and `metadata`.
+- Uses `encoding == "utf-8"` for text content.
+- Uses `encoding == "base64"` for binary content.
 - Returns `None` when the cache entry does not exist.
 
 ### `cache.exists(cache_id)`

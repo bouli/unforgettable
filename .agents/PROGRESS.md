@@ -38,3 +38,13 @@
 - Documented the metadata inspection command, JSON shape, legacy derivation, and API in the README.
 - Added regression coverage for API metadata, text output, JSON output, missing entries, legacy cache folders, and IDs with spaces and punctuation.
 - Verification: `uv run pytest` passed with 63 tests.
+
+## 2026-06-06 - 005 Structured JSON Get
+
+- Added `cache.get_entry(cache_id)` to return cache ID, content, encoding, and metadata for structured callers.
+- Extended `get CACHE_ID --output json` to emit a parseable object while preserving raw stdout behavior for text-mode `get`.
+- Represented text content with `encoding: "utf-8"` and binary content with `encoding: "base64"`.
+- Preserved missing-entry behavior: exit status `1`, empty stdout, and the existing stderr diagnostic.
+- Documented structured `get`, the JSON shape, the new API method, and binary base64 representation in the README.
+- Added regression coverage for raw text output, JSON text, JSON multiline content, JSON binary content, missing entries, cache IDs with spaces and punctuation, and API structured retrieval.
+- Verification: `uv run pytest` passed with 72 tests.

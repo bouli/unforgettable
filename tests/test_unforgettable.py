@@ -1,6 +1,7 @@
 import json
 import os
 import time
+from base64 import b64encode
 from datetime import datetime
 from pathlib import Path
 
@@ -43,6 +44,42 @@ def test_set_and_get_binary_content(tmp_path):
     cache.set(content=content, cache_id="binary")
 
     assert cache.get(cache_id="binary") == content
+
+
+def test_get_entry_returns_structured_text_content_and_metadata(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    content = "first line\nsecond line"
+    cache_id = "id with spaces: and punctuation?!"
+
+    cache.set(content=content, cache_id=cache_id)
+
+    entry = cache.get_entry(cache_id=cache_id)
+    assert entry["cache_id"] == cache_id
+    assert entry["content"] == content
+    assert entry["encoding"] == "utf-8"
+    assert entry["metadata"]["cache_id"] == cache_id
+    assert entry["metadata"]["content_type"] == "text/plain"
+    assert entry["metadata"]["byte_size"] == len(content.encode())
+
+
+def test_get_entry_returns_base64_encoded_binary_content(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    content = b"\x80\x81cached bytes"
+
+    cache.set(content=content, cache_id="binary")
+
+    entry = cache.get_entry(cache_id="binary")
+    assert entry["cache_id"] == "binary"
+    assert entry["content"] == b64encode(content).decode("ascii")
+    assert entry["encoding"] == "base64"
+    assert entry["metadata"]["content_type"] == "application/octet-stream"
+    assert entry["metadata"]["byte_size"] == len(content)
+
+
+def test_get_entry_returns_none_for_missing_cache_id(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+
+    assert cache.get_entry(cache_id="missing") is None
 
 
 def test_overwrites_existing_cache_entry(tmp_path):

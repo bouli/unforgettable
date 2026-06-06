@@ -1,5 +1,6 @@
 import json
 import os
+from base64 import b64encode
 from pathlib import Path
 import shutil
 import subprocess
@@ -345,6 +346,106 @@ def test_cli_get_prints_cached_text_from_selected_cache_folder(tmp_path):
     assert result.stdout == "stored value"
 
 
+def test_cli_get_raw_text_has_no_added_trailing_newline(tmp_path):
+    content = "stored value"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content=content, cache_id="script-key")
+
+    result = run_cli("--cache-folder", str(tmp_path), "get", "script-key")
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert result.stdout == content
+
+
+def test_cli_get_json_outputs_structured_text_content(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id="script-key")
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "get",
+        "script-key",
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    entry = json.loads(result.stdout)
+    assert entry["cache_id"] == "script-key"
+    assert entry["content"] == "stored value"
+    assert entry["encoding"] == "utf-8"
+    assert entry["metadata"]["cache_id"] == "script-key"
+    assert entry["metadata"]["content_type"] == "text/plain"
+    assert entry["metadata"]["byte_size"] == len("stored value".encode())
+
+
+def test_cli_get_json_round_trips_multiline_content(tmp_path):
+    content = "first line\nsecond line\n"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content=content, cache_id="multiline")
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "get",
+        "multiline",
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    entry = json.loads(result.stdout)
+    assert entry["content"] == content
+    assert entry["encoding"] == "utf-8"
+
+
+def test_cli_get_json_outputs_base64_encoded_binary_content(tmp_path):
+    content = b"\x80\x81cached bytes"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content=content, cache_id="binary")
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "get",
+        "binary",
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    entry = json.loads(result.stdout)
+    assert entry["cache_id"] == "binary"
+    assert entry["content"] == b64encode(content).decode("ascii")
+    assert entry["encoding"] == "base64"
+    assert entry["metadata"]["content_type"] == "application/octet-stream"
+    assert entry["metadata"]["byte_size"] == len(content)
+
+
+def test_cli_get_json_round_trips_cache_ids_with_spaces_and_punctuation(tmp_path):
+    cache_id = "id with spaces: and punctuation?!"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id=cache_id)
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "get",
+        cache_id,
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert json.loads(result.stdout)["cache_id"] == cache_id
+
+
 def test_cli_exists_present_cache_id_exits_zero_with_text_result(tmp_path):
     cache = unforgettable(cache_folder=str(tmp_path))
     cache.set(content="stored value", cache_id="script-key")
@@ -566,6 +667,21 @@ def test_cli_clean_removes_entries_from_selected_cache_folder(tmp_path):
 
 def test_cli_get_missing_cache_id_exits_nonzero_with_message(tmp_path):
     result = run_cli("--cache-folder", str(tmp_path), "get", "missing")
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr == "unforgettable: cache ID not found: missing\n"
+
+
+def test_cli_get_json_missing_cache_id_exits_nonzero_with_message(tmp_path):
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "get",
+        "missing",
+    )
 
     assert result.returncode == 1
     assert result.stdout == ""

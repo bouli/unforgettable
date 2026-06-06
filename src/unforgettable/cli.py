@@ -153,6 +153,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "get":
+        if args.output == "json":
+            entry = cache.get_entry(cache_id=args.cache_id)
+            if entry is None:
+                parser.exit(1, f"unforgettable: cache ID not found: {args.cache_id}\n")
+            print(json.dumps(entry))
+            return 0
+
         content = cache.get(cache_id=args.cache_id)
         if content is None:
             parser.exit(1, f"unforgettable: cache ID not found: {args.cache_id}\n")

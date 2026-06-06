@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from base64 import b64encode
 from datetime import UTC, datetime
 
 
@@ -72,6 +73,26 @@ class unforgettable:
         cached_file_index = self.get_index_from_file_index(_safe_cache_id=cache_id)
         code = self.get_cached_file_by_index(cached_file_index=cached_file_index)
         return code
+
+    @safe_cache_id
+    def get_entry(self, cache_id: str) -> dict | None:
+        content = self.get(cache_id=cache_id)
+        if content is None:
+            return None
+
+        if isinstance(content, bytes):
+            encoded_content = b64encode(content).decode("ascii")
+            encoding = "base64"
+        else:
+            encoded_content = content
+            encoding = "utf-8"
+
+        return {
+            "cache_id": self._unsafe_cache_id(cache_id),
+            "content": encoded_content,
+            "encoding": encoding,
+            "metadata": self.info(cache_id=cache_id),
+        }
 
     @safe_cache_id
     def exists(self, cache_id: str) -> bool:
