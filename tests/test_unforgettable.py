@@ -79,6 +79,42 @@ def test_delete_returns_false_for_missing_cache_id(tmp_path):
     assert cache.delete(cache_id="missing") is False
 
 
+def test_info_returns_manifest_metadata_for_cache_id(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache_id = "id with spaces: and punctuation?!"
+
+    cache.set(content="cached value", cache_id=cache_id)
+
+    metadata = cache.info(cache_id=cache_id)
+    assert metadata["cache_id"] == cache_id
+    assert metadata["file_name"] == "1.cache"
+    assert metadata["byte_size"] == len("cached value".encode())
+    assert metadata["content_type"] == "text/plain"
+    assert datetime.fromisoformat(metadata["created_at"])
+    assert datetime.fromisoformat(metadata["updated_at"])
+
+
+def test_info_returns_none_for_missing_cache_id(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+
+    assert cache.info(cache_id="missing") is None
+
+
+def test_info_derives_metadata_for_legacy_cache_folder_without_manifest(tmp_path):
+    (tmp_path / "cache_index.yaml").write_text('0: cache_index.yaml\n1: "legacy"')
+    (tmp_path / "1.cache").write_text("legacy value")
+    cache = unforgettable(cache_folder=str(tmp_path))
+
+    metadata = cache.info(cache_id="legacy")
+
+    assert metadata["cache_id"] == "legacy"
+    assert metadata["file_name"] == "1.cache"
+    assert metadata["byte_size"] == len("legacy value".encode())
+    assert metadata["content_type"] == "text/plain"
+    assert datetime.fromisoformat(metadata["created_at"])
+    assert metadata["updated_at"] == metadata["created_at"]
+
+
 def test_multiple_cache_ids_are_retrieved_independently(tmp_path):
     cache = unforgettable(cache_folder=str(tmp_path))
 

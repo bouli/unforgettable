@@ -107,6 +107,40 @@ class unforgettable:
         self._write_manifest(manifest)
         return True
 
+    @safe_cache_id
+    def info(self, cache_id: str) -> dict | None:
+        cached_file_index = self.get_index_from_file_index(_safe_cache_id=cache_id)
+        if cached_file_index is None:
+            return None
+
+        cache_folder = self.get_cache_folder()
+        cached_file_name = f"{cached_file_index}.{self.cache_files_extension}"
+        cached_file_path = os.path.join(cache_folder, cached_file_name)
+        if not os.path.exists(cached_file_path):
+            return None
+
+        raw_cache_id = self._unsafe_cache_id(cache_id)
+        manifest = self._read_manifest()
+        manifest_entry = manifest["entries"].get(raw_cache_id)
+        if manifest_entry is not None:
+            return dict(manifest_entry)
+
+        file_stats = os.stat(cached_file_path)
+        timestamp = datetime.fromtimestamp(file_stats.st_mtime, UTC).isoformat()
+        content_type = (
+            "application/octet-stream"
+            if self.is_file_binary(cached_file_path)
+            else "text/plain"
+        )
+        return {
+            "cache_id": raw_cache_id,
+            "file_name": cached_file_name,
+            "byte_size": file_stats.st_size,
+            "content_type": content_type,
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        }
+
     def list(self) -> list[str]:
         cache_ids = []
         for _, cache_id in self._read_index_entries():

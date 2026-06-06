@@ -195,6 +195,16 @@ The `delete` command exits with status code `0` after removing an entry. It
 exits with status code `1` and writes a diagnostic to stderr when the cache ID
 is missing.
 
+Inspect metadata for a cache ID before retrieving content:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache info greeting
+```
+
+The `info` command prints readable metadata in text mode. With `--output json`,
+it emits `cache_id`, `file_name`, `byte_size`, `content_type`, `created_at`,
+and `updated_at`.
+
 Clean the selected cache folder:
 
 ```shell
@@ -202,6 +212,7 @@ unforgettable --cache-folder .unforgettable-cache clean
 ```
 
 `get` exits with status code `1` when the requested cache ID is missing.
+`info` exits with status code `1` when the requested cache ID is missing.
 
 ## Local AI-Agent Tool Contract
 
@@ -236,6 +247,7 @@ The CLI uses stable process behavior suitable for unattended tools:
 - Missing cache IDs for `get` exit with status code `1`.
 - Missing cache IDs for `exists` exit with status code `1`.
 - Missing cache IDs for `delete` exit with status code `1`.
+- Missing cache IDs for `info` exit with status code `1`.
 - Rejected cache-folder creation exits with status code `1`.
 - Invalid usage, such as missing required arguments, exits with status code `2`.
 - Command values are written to stdout.
@@ -287,12 +299,22 @@ unforgettable --cache-folder .agent-cache delete notes
 `delete` exits with status code `0` when it removes an entry. It exits with
 status code `1` and writes a stderr diagnostic when the cache ID is missing.
 
+Inspect metadata before retrieving content:
+
+```shell
+unforgettable --cache-folder .agent-cache info notes
+```
+
+`info` exits with status code `0` when metadata is available. It exits with
+status code `1` and writes a stderr diagnostic when the cache ID is missing.
+
 Plain text output is the default. Use `--output json` when a command supports
 structured output:
 
 ```shell
 unforgettable --cache-folder .agent-cache --output json list
 unforgettable --cache-folder .agent-cache --output json exists notes
+unforgettable --cache-folder .agent-cache --output json info notes
 ```
 
 The JSON `list` shape is stable:
@@ -306,6 +328,16 @@ The JSON `exists` shape is stable:
 ```json
 {"cache_id": "notes", "exists": true}
 ```
+
+The JSON `info` shape is stable:
+
+```json
+{"byte_size": 12, "cache_id": "notes", "content_type": "text/plain", "created_at": "2026-06-06T00:00:00+00:00", "file_name": "1.cache", "updated_at": "2026-06-06T00:00:00+00:00"}
+```
+
+Existing cache folders that only have the legacy index and content files remain
+readable. When no manifest exists, `info` derives byte size, content type, and
+timestamps from the stored content file.
 
 ## Custom Cache File Extension
 
@@ -406,6 +438,15 @@ Removes the cached value for `cache_id`.
 - Returns `True` when an entry was removed.
 - Returns `False` when the cache entry does not exist.
 - Preserves unrelated cache entries.
+
+### `cache.info(cache_id)`
+
+Returns metadata for `cache_id`.
+
+- Returns a `dict` with `cache_id`, `file_name`, `byte_size`, `content_type`,
+  `created_at`, and `updated_at`.
+- Returns `None` when the cache entry does not exist.
+- Derives metadata for legacy cache folders that do not have a manifest.
 
 ### `cache.list()`
 

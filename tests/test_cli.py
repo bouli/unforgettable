@@ -48,7 +48,7 @@ def test_local_checkout_module_execution_shows_cli_help():
 
     assert result.returncode == 0
     assert "Inspect and maintain an Unforgettable cache." in result.stdout
-    assert "{list,set,get,exists,delete,clean}" in result.stdout
+    assert "{list,set,get,exists,delete,info,clean}" in result.stdout
     assert "--cache-folder" in result.stdout
     assert ".unforgettable-memory" in result.stdout
 
@@ -61,7 +61,7 @@ def test_local_checkout_console_script_shows_cli_help():
 
     assert result.returncode == 0
     assert "Inspect and maintain an Unforgettable cache." in result.stdout
-    assert "{list,set,get,exists,delete,clean}" in result.stdout
+    assert "{list,set,get,exists,delete,info,clean}" in result.stdout
     assert "--cache-folder" in result.stdout
     assert ".unforgettable-memory" in result.stdout
 
@@ -477,6 +477,79 @@ def test_cli_delete_round_trips_cache_ids_with_spaces_and_punctuation(tmp_path):
     assert result.stdout == ""
     assert result.stderr == ""
     assert unforgettable(cache_folder=str(tmp_path)).list() == []
+
+
+def test_cli_info_prints_readable_metadata(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id="script-key")
+
+    result = run_cli("--cache-folder", str(tmp_path), "info", "script-key")
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    lines = result.stdout.splitlines()
+    assert lines[0] == "cache_id: script-key"
+    assert lines[1] == "file_name: 1.cache"
+    assert lines[2] == f"byte_size: {len('stored value'.encode())}"
+    assert lines[3] == "content_type: text/plain"
+    assert lines[4].startswith("created_at: ")
+    assert lines[5].startswith("updated_at: ")
+
+
+def test_cli_info_json_outputs_metadata_shape(tmp_path):
+    cache_id = "id with spaces: and punctuation?!"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id=cache_id)
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "info",
+        cache_id,
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    metadata = json.loads(result.stdout)
+    assert metadata["cache_id"] == cache_id
+    assert metadata["file_name"] == "1.cache"
+    assert metadata["byte_size"] == len("stored value".encode())
+    assert metadata["content_type"] == "text/plain"
+    assert metadata["created_at"]
+    assert metadata["updated_at"]
+
+
+def test_cli_info_missing_cache_id_exits_one_with_diagnostic(tmp_path):
+    result = run_cli("--cache-folder", str(tmp_path), "info", "missing")
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr == "unforgettable: cache ID not found: missing\n"
+
+
+def test_cli_info_derives_metadata_for_legacy_cache_folder(tmp_path):
+    (tmp_path / "cache_index.yaml").write_text('0: cache_index.yaml\n1: "legacy"')
+    (tmp_path / "1.cache").write_text("legacy value")
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "info",
+        "legacy",
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    metadata = json.loads(result.stdout)
+    assert metadata["cache_id"] == "legacy"
+    assert metadata["file_name"] == "1.cache"
+    assert metadata["byte_size"] == len("legacy value".encode())
+    assert metadata["content_type"] == "text/plain"
+    assert metadata["created_at"] == metadata["updated_at"]
 
 
 def test_cli_clean_removes_entries_from_selected_cache_folder(tmp_path):

@@ -27,3 +27,14 @@
 - Documented the deletion command and API in the README.
 - Added regression coverage for successful deletion, missing deletion, repeated deletion, IDs with spaces and punctuation, and post-delete `list`/`get` behavior.
 - Verification: `uv run pytest` passed with 56 tests.
+
+## 2026-06-06 - 004 Entry Info
+
+- Added `cache.info(cache_id)` to the Python API, returning metadata for existing entries and `None` for missing entries.
+- Added `info CACHE_ID` to the CLI with readable text output and structured JSON output.
+- Metadata inspection now returns cache ID, content file name, byte size, content type, created time, and updated time.
+- Legacy cache folders without `cache_manifest.json` derive metadata from the index and content file.
+- Missing `info` lookups exit `1` with a stderr diagnostic.
+- Documented the metadata inspection command, JSON shape, legacy derivation, and API in the README.
+- Added regression coverage for API metadata, text output, JSON output, missing entries, legacy cache folders, and IDs with spaces and punctuation.
+- Verification: `uv run pytest` passed with 63 tests.

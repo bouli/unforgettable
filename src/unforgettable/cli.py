@@ -94,6 +94,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     delete_parser.add_argument("cache_id", help="Cache ID to delete.")
 
+    info_parser = subparsers.add_parser(
+        "info",
+        help="Inspect cached content metadata.",
+    )
+    info_parser.add_argument("cache_id", help="Cache ID to inspect.")
+
     subparsers.add_parser("clean", help="Remove cached values.")
 
     return parser
@@ -168,6 +174,24 @@ def main(argv: Sequence[str] | None = None) -> int:
         deleted = cache.delete(cache_id=args.cache_id)
         if not deleted:
             parser.exit(1, f"unforgettable: cache ID not found: {args.cache_id}\n")
+        return 0
+
+    if args.command == "info":
+        metadata = cache.info(cache_id=args.cache_id)
+        if metadata is None:
+            parser.exit(1, f"unforgettable: cache ID not found: {args.cache_id}\n")
+        if args.output == "json":
+            print(json.dumps(metadata))
+        else:
+            for key in (
+                "cache_id",
+                "file_name",
+                "byte_size",
+                "content_type",
+                "created_at",
+                "updated_at",
+            ):
+                print(f"{key}: {metadata[key]}")
         return 0
 
     if args.command == "clean":
