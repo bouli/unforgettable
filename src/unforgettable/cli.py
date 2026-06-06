@@ -30,7 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Inspect and maintain an Unforgettable cache.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--version", action="version", version="%(prog)s v0.2.0")
+    parser.add_argument("--version", action="version", version="%(prog)s v0.3.0")
     parser.add_argument(
         "--output",
         choices=("text", "json"),
@@ -52,9 +52,7 @@ def build_parser() -> argparse.ArgumentParser:
     cache_folder_policy.add_argument(
         "--create-cache-folder",
         action="store_true",
-        help=(
-            "Create a missing explicitly selected cache folder without prompting."
-        ),
+        help=("Create a missing explicitly selected cache folder without prompting."),
     )
     cache_folder_policy.add_argument(
         "--no-create-cache-folder",
