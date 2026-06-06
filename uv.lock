@@ -165,7 +165,7 @@ wheels = [
 [[package]]
 name = "unforgettable"
 version = "0.2.0"
-source = { virtual = "." }
+source = { editable = "." }
 
 [package.dev-dependencies]
 dev = [

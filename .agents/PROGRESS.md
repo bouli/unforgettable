@@ -29,3 +29,7 @@
   - Exits non-zero without creating the folder when the prompt is declined or receives no input.
   - Documented the missing explicit folder prompt in `README.md`.
   - Covered confirmed, declined, and no-input prompt behavior with subprocess tests.
+- `.agents/issues/006-fix-local-checkout-execution.md`
+  - Added explicit setuptools build metadata and src-package discovery so `uv run` installs the local checkout as an editable package.
+  - Verified `uv run python -m unforgettable --help` and `uv run unforgettable --help` work from the repository.
+  - Covered both local checkout execution paths with subprocess tests that remove `PYTHONPATH`.

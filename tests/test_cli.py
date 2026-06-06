@@ -1,8 +1,12 @@
 import os
+from pathlib import Path
+import shutil
 import subprocess
 import sys
 
 from unforgettable import unforgettable
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def run_cli(*args, cwd=None, input=None):
@@ -21,6 +25,44 @@ def run_cli(*args, cwd=None, input=None):
         capture_output=True,
         input=input,
     )
+
+
+def run_local_checkout(*args):
+    env = os.environ.copy()
+    env.pop("PYTHONPATH", None)
+    return subprocess.run(
+        ["uv", "run", *args],
+        cwd=PROJECT_ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+    )
+
+
+def test_local_checkout_module_execution_shows_cli_help():
+    if shutil.which("uv") is None:
+        raise AssertionError("uv is required to verify local checkout execution")
+
+    result = run_local_checkout("python", "-m", "unforgettable", "--help")
+
+    assert result.returncode == 0
+    assert "Inspect and maintain an Unforgettable cache." in result.stdout
+    assert "{list,set,get,clean}" in result.stdout
+    assert "--cache-folder" in result.stdout
+    assert ".unforgettable-memory" in result.stdout
+
+
+def test_local_checkout_console_script_shows_cli_help():
+    if shutil.which("uv") is None:
+        raise AssertionError("uv is required to verify local checkout execution")
+
+    result = run_local_checkout("unforgettable", "--help")
+
+    assert result.returncode == 0
+    assert "Inspect and maintain an Unforgettable cache." in result.stdout
+    assert "{list,set,get,clean}" in result.stdout
+    assert "--cache-folder" in result.stdout
+    assert ".unforgettable-memory" in result.stdout
 
 
 def test_cli_help_describes_list_command():
