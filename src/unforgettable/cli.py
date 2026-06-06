@@ -82,6 +82,12 @@ def build_parser() -> argparse.ArgumentParser:
     get_parser = subparsers.add_parser("get", help="Retrieve cached content.")
     get_parser.add_argument("cache_id", help="Cache ID to retrieve.")
 
+    exists_parser = subparsers.add_parser(
+        "exists",
+        help="Check whether a cache ID exists.",
+    )
+    exists_parser.add_argument("cache_id", help="Cache ID to check.")
+
     subparsers.add_parser("clean", help="Remove cached values.")
 
     return parser
@@ -143,6 +149,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             sys.stdout.write(content)
         return 0
+
+    if args.command == "exists":
+        exists = cache.exists(cache_id=args.cache_id)
+        if args.output == "json":
+            print(json.dumps({"cache_id": args.cache_id, "exists": exists}))
+        else:
+            print("true" if exists else "false")
+        return 0 if exists else 1
 
     if args.command == "clean":
         cache.clean()

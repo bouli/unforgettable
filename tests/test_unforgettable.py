@@ -14,6 +14,12 @@ def test_get_returns_none_for_missing_cache_id(tmp_path):
     assert cache.get(cache_id="missing") is None
 
 
+def test_exists_returns_false_for_missing_cache_id(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+
+    assert cache.exists(cache_id="missing") is False
+
+
 def test_list_returns_empty_list_for_new_cache_folder(tmp_path):
     cache = unforgettable(cache_folder=str(tmp_path))
 
@@ -26,6 +32,7 @@ def test_set_and_get_text_content(tmp_path):
     cache.set(content="cached value", cache_id="example")
 
     assert cache.get(cache_id="example") == "cached value"
+    assert cache.exists(cache_id="example") is True
     assert cache.list() == ["example"]
 
 
@@ -67,6 +74,7 @@ def test_list_preserves_cache_ids_with_spaces_and_punctuation(tmp_path):
 
     assert cache.list() == [cache_id]
     assert cache.get(cache_id=cache_id) == "stored"
+    assert cache.exists(cache_id=cache_id) is True
 
 
 def test_configured_cache_folder_persists_between_instances(tmp_path):

@@ -176,6 +176,15 @@ unforgettable --cache-folder .unforgettable-cache get greeting
 Retrieved text is written directly to stdout without labels or added trailing
 newlines, so cached values can be piped into other tools.
 
+Check whether a cache ID exists without retrieving content:
+
+```shell
+unforgettable --cache-folder .unforgettable-cache exists greeting
+```
+
+The `exists` command writes `true` or `false` in text mode. It exits with status
+code `0` when the cache ID exists and status code `1` when it is missing.
+
 Clean the selected cache folder:
 
 ```shell
@@ -215,6 +224,7 @@ The CLI uses stable process behavior suitable for unattended tools:
 
 - Successful commands exit with status code `0`.
 - Missing cache IDs for `get` exit with status code `1`.
+- Missing cache IDs for `exists` exit with status code `1`.
 - Rejected cache-folder creation exits with status code `1`.
 - Invalid usage, such as missing required arguments, exits with status code `2`.
 - Command values are written to stdout.
@@ -248,17 +258,33 @@ without labels or added trailing newlines:
 unforgettable --cache-folder .agent-cache get notes
 ```
 
+Check for a cache ID without retrieving content:
+
+```shell
+unforgettable --cache-folder .agent-cache exists notes
+```
+
+Text `exists` output is `true` or `false`. The command exits with status code
+`0` when the cache ID exists and status code `1` when it is missing.
+
 Plain text output is the default. Use `--output json` when a command supports
 structured output:
 
 ```shell
 unforgettable --cache-folder .agent-cache --output json list
+unforgettable --cache-folder .agent-cache --output json exists notes
 ```
 
 The JSON `list` shape is stable:
 
 ```json
 {"cache_ids": ["notes"]}
+```
+
+The JSON `exists` shape is stable:
+
+```json
+{"cache_id": "notes", "exists": true}
 ```
 
 ## Custom Cache File Extension
@@ -348,6 +374,10 @@ Returns the cached value for `cache_id`.
 - Returns `str` for text files.
 - Returns `bytes` for binary files.
 - Returns `None` when the cache entry does not exist.
+
+### `cache.exists(cache_id)`
+
+Returns `True` when `cache_id` has a cached value and `False` when it does not.
 
 ### `cache.list()`
 

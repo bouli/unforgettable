@@ -73,6 +73,17 @@ class unforgettable:
         code = self.get_cached_file_by_index(cached_file_index=cached_file_index)
         return code
 
+    @safe_cache_id
+    def exists(self, cache_id: str) -> bool:
+        cached_file_index = self.get_index_from_file_index(_safe_cache_id=cache_id)
+        if cached_file_index is None:
+            return False
+
+        cache_folder = self.get_cache_folder()
+        cached_file_name = f"{cached_file_index}.{self.cache_files_extension}"
+        cached_file_path = os.path.join(cache_folder, cached_file_name)
+        return os.path.exists(cached_file_path)
+
     def list(self) -> list[str]:
         cache_ids = []
         for _, cache_id in self._read_index_entries():

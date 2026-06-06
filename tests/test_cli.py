@@ -48,7 +48,7 @@ def test_local_checkout_module_execution_shows_cli_help():
 
     assert result.returncode == 0
     assert "Inspect and maintain an Unforgettable cache." in result.stdout
-    assert "{list,set,get,clean}" in result.stdout
+    assert "{list,set,get,exists,clean}" in result.stdout
     assert "--cache-folder" in result.stdout
     assert ".unforgettable-memory" in result.stdout
 
@@ -61,7 +61,7 @@ def test_local_checkout_console_script_shows_cli_help():
 
     assert result.returncode == 0
     assert "Inspect and maintain an Unforgettable cache." in result.stdout
-    assert "{list,set,get,clean}" in result.stdout
+    assert "{list,set,get,exists,clean}" in result.stdout
     assert "--cache-folder" in result.stdout
     assert ".unforgettable-memory" in result.stdout
 
@@ -343,6 +343,80 @@ def test_cli_get_prints_cached_text_from_selected_cache_folder(tmp_path):
     assert result.returncode == 0
     assert result.stderr == ""
     assert result.stdout == "stored value"
+
+
+def test_cli_exists_present_cache_id_exits_zero_with_text_result(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id="script-key")
+
+    result = run_cli("--cache-folder", str(tmp_path), "exists", "script-key")
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert result.stdout == "true\n"
+
+
+def test_cli_exists_missing_cache_id_exits_one_with_text_result(tmp_path):
+    result = run_cli("--cache-folder", str(tmp_path), "exists", "missing")
+
+    assert result.returncode == 1
+    assert result.stderr == ""
+    assert result.stdout == "false\n"
+
+
+def test_cli_exists_json_outputs_cache_id_and_boolean_result(tmp_path):
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id="script-key")
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "exists",
+        "script-key",
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert json.loads(result.stdout) == {
+        "cache_id": "script-key",
+        "exists": True,
+    }
+
+
+def test_cli_exists_json_missing_cache_id_exits_one_with_false_result(tmp_path):
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "exists",
+        "missing",
+    )
+
+    assert result.returncode == 1
+    assert result.stderr == ""
+    assert json.loads(result.stdout) == {"cache_id": "missing", "exists": False}
+
+
+def test_cli_exists_round_trips_cache_ids_with_spaces_and_punctuation(tmp_path):
+    cache_id = "id with spaces: and punctuation?!"
+    cache = unforgettable(cache_folder=str(tmp_path))
+    cache.set(content="stored value", cache_id=cache_id)
+
+    result = run_cli(
+        "--cache-folder",
+        str(tmp_path),
+        "--output",
+        "json",
+        "exists",
+        cache_id,
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert json.loads(result.stdout) == {"cache_id": cache_id, "exists": True}
 
 
 def test_cli_clean_removes_entries_from_selected_cache_folder(tmp_path):
